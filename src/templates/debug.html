@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+
+{% block title %}Debug Panel{% endblock %}
+
+{% block content %}
+<div id="globalAlert" style="display: none;" class="global-alert"></div>
+<div class="debug-container">
+    <div class="space-controls">
+        <button onclick="collapseAll()" class="btn-secondary">
+            <span class="material-icons">unfold_less</span>
+            Collapse All
+            <span class="keyboard-hint">Alt+C</span>
+        </button>
+        <button onclick="expandAll()" class="btn-secondary">
+            <span class="material-icons">unfold_more</span>
+            Expand All
+            <span class="keyboard-hint">Alt+E</span>
+        </button>
+        <div class="view-density">
+            <label>View Density:</label>
+            <select onchange="updateViewDensity(this.value)">
+                <option value="comfortable">Comfortable</option>
+                <option value="compact">Compact</option>
+                <option value="dense">Dense</option>
+            </select>
+        </div>
+    </div>
+    <h1>Debug Panel</h1>
+    
+    <div class="debug-tabs">
+        <button class="tab-button active" onclick="showTab('graphql')">GraphQL API</button>
+        <button class="tab-button" onclick="showTab('neo4j')">Neo4j Import</button>
+    </div>
+
+    <div id="graphql-tab" class="tab-content active">
+        <div class="debug-section collapsible">
+            <div class="section-header" ondblclick="toggleAllSections(event)">
+                <div class="section-state-indicator"></div>
+                <h2>GraphQL API Configuration</h2>
+                <button class="collapse-toggle" onclick="toggleSection(this, event)">
+                    <span class="material-icons">expand_less</span>
+                </button>
+            </div>
+            <div class="section-content">
+                <div class="config-info">
+                    <p><strong>Endpoint:</strong> {{ graphql_endpoint }}</p>
+                    <p><strong>SSL Verification:</strong> {{ ssl_verification }}</p>
+                </div>
+                
+                <div class="query-info">
+                    <h3>GraphQL Query</h3>
+                    <pre class="query-pre">{{ query }}</pre>
+                </div>
+            </div>
+        </div>
+
+        <div class="debug-actions">
+            <button onclick="testGraphQL()" class="btn-primary">Test GraphQL Connection</button>
+            <button onclick="loadLastResponse()" class="btn-secondary">Load Last Response</button>
+        </div>
+
+        <div class="debug-output collapsible">
+            <div class="section-header" ondblclick="toggleAllSections(event)">
+                <div class="section-state-indicator"></div>
+                <h3>Response Output</h3>
+                <button class="collapse-toggle" onclick="toggleSection(this, event)">
+                    <span class="material-icons">expand_less</span>
+                </button>
+            </div>
+            <div class="section-content">
+                <div class="response-controls">
+                    <div class="toggle-container">
+                        <!-- Add view toggle -->
+                        <div class="view-toggle">
+                            <button id="viewToggleRaw" onclick="toggleResponseView('raw')" class="btn-secondary active">
+                                Raw JSON
+                            </button>
+                            <button id="viewToggleFormatted" onclick="toggleResponseView('formatted')" class="btn-secondary">
+                                Formatted View
+                            </button>
+                        </div>
+                        <!-- Existing response controls -->
+                        <button id="toggleResponse" onclick="toggleFullResponse()" class="btn-secondary">
+                            <span class="toggle-icon material-icons">unfold_more</span>
+                            <span class="toggle-text">Show Full Response</span>
+                        </button>
+                    </div>
+                    <!-- Add record navigation for formatted view -->
+                    <div id="recordNavigation" class="record-navigation" style="display: none;">
+                        <button onclick="previousRecord()" class="btn-secondary">
+                            <span class="material-icons">navigate_before</span>
+                        </button>
+                        <span id="recordCounter">Record 0 of 0</span>
+                        <button onclick="nextRecord()" class="btn-secondary">
+                            <span class="material-icons">navigate_next</span>
+                        </button>
+                    </div>
+                    <div id="itemLimitControl" class="item-limit-control">
+                        <select id="itemLimit" onchange="updateResponseDisplay()">
+                            <option value="5">Show 5 items</option>
+                            <option value="10">Show 10 items</option>
+                            <option value="20">Show 20 items</option>
+                            <option value="50">Show 50 items</option>
+                            <option value="100">Show 100 items</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="request-status" class="request-status" style="display: none;">
+                    <div class="loading-spinner"></div>
+                    <span class="status-message"></span>
+                    <button onclick="cancelRequest()" class="btn-secondary">Cancel Request</button>
+                </div>
+                <div id="response-summary" class="response-summary"></div>
+                <pre id="graphql-response" class="output-pre truncated">{{ message }}</pre>
+                
+                <div id="request-details" class="request-details" style="display: none;">
+                    <h4>Request Details</h4>
+                    <div class="details-content"></div>
+                </div>
+
+                <div id="error-details" class="error-details" style="display: none;">
+                    <h4>Error Details</h4>
+                    <div class="details-content"></div>
+                    <div class="error-help"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="neo4j-tab" class="tab-content">
+        <div id="no-data-message" class="no-data-state" style="display: none;">
+            <p class="message">No item data available for import.</p>
+            <div class="actions">
+                <button onclick="loadLastResponse()" class="btn-primary">Load Last Response</button>
+                <span class="or-divider">or</span>
+                <button onclick="showTab('graphql'); testGraphQL();" class="btn-secondary">Fetch New Data</button>
+            </div>
+        </div>
+        
+        <div class="debug-section">
+            <div class="section-header" ondblclick="toggleAllSections(event)">
+                <div class="section-state-indicator"></div>
+                <h2>Neo4j Import Status</h2>
+                <button class="collapse-toggle" onclick="toggleSection(this, event)">
+                    <span class="material-icons">expand_less</span>
+                </button>
+            </div>
+            <div class="config-info">
+                <p><strong>Database URI:</strong> {{ neo4j_uri }}</p>
+                <p><strong>Connection Status:</strong> <span id="neo4j-status">Not Checked</span></p>
+            </div>
+        </div>
+
+        <div class="debug-actions">
+            <button onclick="testNeo4j()" class="btn-primary">Test Neo4j Connection</button>
+            <button onclick="validateImport()" class="btn-secondary">Validate Import Data</button>
+            <button onclick="importLastResponse()" class="btn-secondary" disabled id="importButton">Import Data</button>
+        </div>
+
+        <div class="debug-output">
+            <h3>Import Results</h3>
+            <div id="import-preview" class="import-preview" style="display: none;">
+                <h4>Data to Import:</h4>
+                <div class="preview-stats"></div>
+            </div>
+            
+            <div id="import-progress" class="import-progress" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+                <p class="progress-text">0%</p>
+            </div>
+
+            <pre id="neo4j-response" class="output-pre">Click 'Test Neo4j Connection' to verify database connectivity</pre>
+            
+            <div id="neo4j-details" class="debug-details" style="display: none;">
+                <h4>Operation Details</h4>
+                <div class="details-content"></div>
+            </div>
+        </div>
+    </div>
+</div>
+<button class="quick-collapse-button" onclick="toggleQuickCollapse()" title="Quick collapse all sections">
+    <span class="material-icons">unfold_less</span>
+</button>
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+    // Single initialization function
+    const initDebug = async () => {
+        try {
+            const module = await import("{{ url_for('static', filename='js/modules/debugController.js') }}");
+            const controller = module.default;
+            
+            // Expose methods to window with explicit function calls
+            Object.assign(window, {
+                showTab: (...args) => controller.showTab(...args),
+                testGraphQL: (...args) => controller.testGraphQL(...args),
+                loadLastResponse: (...args) => controller.loadLastResponse(...args),
+                testNeo4j: (...args) => controller.testNeo4j(...args),
+                validateImport: (...args) => controller.validateImport(...args),
+                importLastResponse: (...args) => controller.importLastResponse(...args),
+                toggleFullResponse: (...args) => controller.toggleFullResponse(...args),
+                updateResponseDisplay: (...args) => controller.updateResponseDisplay(...args),
+                cancelRequest: (...args) => controller.cancelRequest(...args),
+                toggleResponseView: (...args) => controller.toggleResponseView(...args),
+                previousRecord: (...args) => controller.previousRecord(...args),
+                nextRecord: (...args) => controller.nextRecord(...args)
+            });
+
+            console.log('Debug controller initialized and methods bound to window');
+        } catch (error) {
+            console.error('Debug controller initialization failed:', error);
+        }
+    };
+
+    // Initialize on DOMContentLoaded or immediately if already loaded
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initDebug);
+    } else {
+        initDebug();
+    }
+</script>
+<script>
+    // Existing toggle function update
+    function toggleSection(button, event) {
+        if (event) event.stopPropagation();
+        const section = button.closest('.collapsible');
+        const content = section.querySelector('.section-content');
+        const icon = button.querySelector('.material-icons');
+        const indicator = section.querySelector('.section-state-indicator');
+        
+        content.classList.toggle('collapsed');
+        icon.textContent = content.classList.contains('collapsed') ? 
+            'expand_more' : 'expand_less';
+        indicator.classList.toggle('collapsed');
+        
+        saveState(section);
+    }
+
+    function toggleAllSections(event) {
+        const allCollapsed = Array.from(document.querySelectorAll('.section-content'))
+            .every(content => content.classList.contains('collapsed'));
+            
+        document.querySelectorAll('.collapsible').forEach(section => {
+            const content = section.querySelector('.section-content');
+            const icon = section.querySelector('.material-icons');
+            const indicator = section.querySelector('.section-state-indicator');
+            
+            content.classList.toggle('collapsed', !allCollapsed);
+            icon.textContent = !allCollapsed ? 'expand_more' : 'expand_less';
+            indicator.classList.toggle('collapsed', !allCollapsed);
+            saveState(section);
+        });
+    }
+
+    function collapseAll() {
+        document.querySelectorAll('.collapsible').forEach(section => {
+            const content = section.querySelector('.section-content');
+            if (!content.classList.contains('collapsed')) {
+                toggleSection(section.querySelector('.collapse-toggle'));
+            }
+        });
+    }
+
+    function expandAll() {
+        document.querySelectorAll('.collapsible').forEach(section => {
+            const content = section.querySelector('.section-content');
+            if (content.classList.contains('collapsed')) {
+                toggleSection(section.querySelector('.collapse-toggle'));
+            }
+        });
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        if (e.altKey && e.key === 'c') collapseAll();
+        if (e.altKey && e.key === 'e') expandAll();
+    });
+
+    function updateViewDensity(density) {
+        document.body.dataset.density = density;
+        localStorage.setItem('viewDensity', density);
+    }
+
+    // Load saved density
+    const savedDensity = localStorage.getItem('viewDensity');
+    if (savedDensity) {
+        updateViewDensity(savedDensity);
+        document.querySelector('.view-density select').value = savedDensity;
+    }
+
+    // Quick collapse state
+    let quickCollapseState = true;
+    function toggleQuickCollapse() {
+        quickCollapseState ? collapseAll() : expandAll();
+        quickCollapseState = !quickCollapseState;
+        document.querySelector('.quick-collapse-button .material-icons').textContent = 
+            quickCollapseState ? 'unfold_less' : 'unfold_more';
+    }
+
+    function toggleSection(button) {
+        const section = button.closest('.collapsible');
+        const content = section.querySelector('.section-content');
+        const icon = button.querySelector('.material-icons');
+        
+        content.classList.toggle('collapsed');
+        icon.textContent = content.classList.contains('collapsed') ? 
+            'expand_more' : 'expand_less';
+            
+        // Save state
+        localStorage.setItem(
+            `section-${section.querySelector('h2,h3').textContent}`, 
+            content.classList.contains('collapsed')
+        );
+    }
+
+    // Restore collapsed state on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.collapsible').forEach(section => {
+            const content = section.querySelector('.section-content');
+            const button = section.querySelector('.collapse-toggle');
+            const title = section.querySelector('h2,h3').textContent;
+            const isCollapsed = localStorage.getItem(`section-${title}`) === 'true';
+            
+            if (isCollapsed) {
+                content.classList.add('collapsed');
+                button.querySelector('.material-icons').textContent = 'expand_more';
+            }
+        });
+    });
+</script>
+{% endblock %}

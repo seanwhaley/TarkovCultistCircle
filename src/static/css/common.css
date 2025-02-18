@@ -1,0 +1,152 @@
+/* Base collapsible section styles */
+.collapsible-section {
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    background: white;
+    transition: transform 0.2s, box-shadow 0.2s;
+    background-color: var(--card-background);
+    border: 1px solid var(--border-color);
+}
+
+.collapsible-section:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    background: #f8f9fa;
+    cursor: pointer;
+    user-select: none;
+    background-color: var(--header-bg);
+    color: var(--header-text);
+}
+
+.section-header h2,
+.section-header h3,
+.section-header h4 {
+    margin: 0;
+    flex-grow: 1;
+}
+
+.section-toggle {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s;
+}
+
+.section-content {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    background-color: var(--card-background);
+    color: var(--text-color);
+}
+
+.section-content.collapsed {
+    max-height: 0;
+    padding: 0;
+    opacity: 0;
+}
+
+/* Common floating action button */
+.floating-action-btn {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 50%;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    cursor: pointer;
+    z-index: 1000;
+    transition: all 0.2s;
+}
+
+.floating-action-btn:hover {
+    transform: scale(1.1);
+    background: #388E3C;
+}
+
+/* Common keyboard shortcuts hint */
+.keyboard-hint {
+    display: inline-block;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    background: #eee;
+    font-size: 0.8rem;
+    color: #666;
+    margin-left: 0.5rem;
+}
+
+/* Common sticky header */
+.sticky-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: white;
+    padding: 1rem;
+    border-bottom: 1px solid #eee;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Common space controls */
+.density-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem;
+}
+
+/* Density styles */
+[data-density="comfortable"] .section-content {
+    padding: 1.5rem;
+}
+
+[data-density="compact"] .section-content {
+    padding: 1rem;
+}
+
+[data-density="dense"] .section-content {
+    padding: 0.5rem;
+}
+
+/* Common animations */
+@keyframes slideIn {
+    from { transform: translateY(-10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-in {
+    animation: slideIn 0.3s ease-out;
+}
+
+/* Theme-aware buttons */
+.btn-icon {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    padding: 0.5rem;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btn-icon:hover {
+    background-color: var(--hover-bg);
+}
+
+/* Theme-aware controls */
+select, input {
+    background-color: var(--card-background);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}

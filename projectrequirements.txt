@@ -1,0 +1,208 @@
+Generate the initial codebase for a web application in Python that satisfies all the requirements outlined below. Focus on providing a well-structured and commented codebase that incorporates best practices and is ready for further development using GitHub Copilot.
+
+This project will be a web application that allows the user to:
+
+Download a JSON file from api.tarkov.dev:
+
+API URL: https://api.tarkov.dev/graphql
+Request Payload:
+JSON
+
+{
+  items(lang: en) {
+    id
+    name
+    basePrice
+    buyFor {
+      priceRUB
+      vendor {
+        name
+      }
+    }
+    categories {
+      name
+    }
+    fleaMarketFee
+    sellFor {
+      priceRUB
+      vendor {
+        name
+      }
+    }
+    updated
+    weight
+  }
+}
+Example Item Response:
+JSON
+
+{
+    "data": {
+        "items": [
+        {
+            "id": "5447a9cd4bdc2dbd208b4567",
+            "name": "Colt M4A1 5.56x45 assault rifle",
+            "basePrice": 18397,
+            "buyFor": [
+              {
+                "priceRUB": 18397,
+                "vendor": {
+                  "name": "Mechanic"
+                }
+              },
+              {
+                "priceRUB": 85893,
+                "vendor": {
+                  "name": "Flea Market"
+                }
+              }
+            ],
+            "categories": [
+              {
+                "name": "Assault rifle"
+              },
+              {
+                "name": "Weapon"
+              },
+              {
+                "name": "Compound item"
+              },
+              {
+                "name": "Item"
+              }
+            ],
+            "fleaMarketFee": 4992,
+            "sellFor": [
+              {
+                "priceRUB": 9198,
+                "vendor": {
+                  "name": "Prapor"
+                }
+              },
+              {
+                "priceRUB": 7358,
+                "vendor": {
+                  "name": "Fence"
+                }
+              },
+              {
+                "priceRUB": 9014,
+                "vendor": {
+                  "name": "Skier"
+                }
+              },
+              {
+                "priceRUB": 8278,
+                "vendor": {
+                  "name": "Peacekeeper"
+                }
+              },
+              {
+                "priceRUB": 10302,
+                "vendor": {
+                  "name": "Mechanic"
+                }
+              },
+              {
+                "priceRUB": 9198,
+                "vendor": {
+                  "name": "Ref"
+                }
+              },
+              {
+                "priceRUB": 71999,
+                "vendor": {
+                  "name": "Flea Market"
+                }
+              }
+            ],
+            "updated": "2025-02-16T18:56:36.000Z",
+            "weight": 0.38,
+            "category": {
+              "name": "Assault rifle"
+        }
+    },
+Filtered Query Example:
+JSON
+
+{
+  items(lang: en, ids: ["5447a9cd4bdc2dbd208b4567"]) {
+    id
+    name
+  }
+}
+Save JSON to Graph Database:
+
+Choose and implement either Neo4j or PostgreSQL for the graph database.
+Provide a rational for the chosen database in the documentation.
+Define and rationalize the graph database structure in the documentation.
+Optimal Item Combination Interface:
+
+Create a user interface to find the best combination of 1-5 items.
+Optimization criteria:
+Lowest sum of 'buyFor' prices.
+Sum of 'basePrice' is at least 400000.
+Price Override Feature:
+
+Allow users to override 'buyFor' prices through the interface.
+Implement an option to save these price overrides to the graph database, with a toggle to enable/disable saving.
+Item Blacklist Feature:
+
+Implement a temporary item blacklisting feature. Users should be able to blacklist items by name or by selecting them from combination results.
+Allow users to set the blacklist duration, ranging from a few minutes to manual removal.
+Item Lock Feature:
+
+Implement an item locking feature within combinations.
+Allow users to lock items so they remain in selected combinations across refreshes.
+Allow users to set the lock duration, ranging from a single refresh to manual removal.
+Combination History Feature:
+
+Implement a feature to record saved item combinations, tagged with timestamps indicating time saved.
+Provide a mechanism to edit this history to correct accidental saves.
+Data Visualization Feature:
+
+Implement methods to visualize the data graphically for analysis purposes.
+Docker Containerization:
+
+Dockerize the project using Docker Compose.
+Set up Docker Compose to manage containers, volumes for persistent data, and live connections to project files on the host machine for development.
+Documentation:
+
+Create comprehensive project documentation.
+Update the README file to provide a detailed overview of the project and setup instructions.
+Create dedicated folders for documentation files and example Jupyter notebooks showcasing project functionality.
+Website Framework Selection:
+
+Utilize a suitable and well-established website framework (do not create a framework from scratch).
+Identify the best framework for this project's purpose and include the rational for its selection in the project documentation.
+Secrets Management:
+
+Implement an .env file to securely manage any sensitive secrets required for the application.
+Material Design Principles:
+
+Design the website's user interface following Material Design principles for a clean and intuitive user experience.
+Code Commenting:
+
+Ensure thorough commenting throughout the codebase to enhance readability and facilitate future understanding and modifications.
+Best Practices Implementation:
+
+Identify and implement relevant coding best practices throughout the project to ensure code quality, maintainability, and scalability.
+Test Scripting:
+
+Create and implement test scripts for critical functionalities to ensure reliability and facilitate future development.
+GitHub Repository Best Practices:
+
+Implement best practices for structuring, coding, and documenting a project within a GitHub repository, ensuring clarity and collaboration.
+User-Friendly Enhancements:
+
+Identify and implement additional features that would enhance the website's user-friendliness and overall user experience.
+Type Error Avoidance:
+
+Write functions and code in a way that avoids "implicit 'any' type" errors, ensuring type safety and code robustness.
+Dependency Management:
+
+Utilize a requirements.txt file to manage and install all Python package dependencies within the Docker containers.
+Python Preference:
+
+Prioritize the use of Python for implementing as much of the project's functionality as possible.
+Generate the initial codebase structure, configuration files, and starting code for each of these features. Ensure the generated code is well-organized, commented, and follows best practices, providing a solid foundation for further development using GitHub Copilot."

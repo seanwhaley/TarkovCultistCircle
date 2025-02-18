@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Tarkov Cultist Circle - Item optimization and analysis tool">
+    <meta name="theme-color" content="#2c3e50">
+    <title>Tarkov Cultist Circle - {% block title %}{% endblock %}</title>
+    
+    <!-- Fonts and Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+    {% block styles %}{% endblock %}
+
+    <script>
+        // Check for saved theme preference or default to system preference
+        const getPreferredTheme = () => {
+            const saved = localStorage.getItem('theme');
+            if (saved) return saved;
+            
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 
+                'dark' : 'light';
+        };
+
+        // Apply theme immediately to avoid flash
+        document.documentElement.dataset.theme = getPreferredTheme();
+    </script>
+</head>
+<body>
+    <header>
+        <nav class="main-nav sticky-header">
+            <ul>
+                <li><a href="{{ url_for('home.home') }}">Home</a></li>
+                <li><a href="{{ url_for('optimizer.optimizer') }}">Optimizer</a></li>
+                <li><a href="{{ url_for('debug.debug') }}">Debug</a></li>
+                <li><a href="{{ url_for('history.history') }}">History</a></li>
+                <li><a href="{{ url_for('analysis.analysis') }}">Analysis</a></li>
+            </ul>
+            <div class="data-controls">
+                <button id="refreshData" class="btn-secondary" onclick="refreshData()">
+                    <span class="material-icons">sync</span>
+                    Refresh Data
+                </button>
+                <div id="refreshStatus" class="refresh-status"></div>
+            </div>
+            <div class="density-controls">
+                <label for="density">Density:</label>
+                <select id="density" class="density-select">
+                    <option value="comfortable">Comfortable</option>
+                    <option value="compact">Compact</option>
+                    <option value="dense">Dense</option>
+                </select>
+            </div>
+            <div class="theme-toggle">
+                <button onclick="toggleTheme()" class="btn-icon" title="Toggle theme">
+                    <span class="material-icons">dark_mode</span>
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <div id="globalAlert" class="global-alert" style="display: none;"></div>
+
+    <main class="container">
+        <div id="error-message" style="display: none;" class="error"></div>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <p>© 2024 TarkovCultistCircle</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+    async function refreshData() {
+        const button = document.getElementById('refreshData');
+        const status = document.getElementById('refreshStatus');
+        const alert = document.getElementById('globalAlert');
+        
+        try {
+            button.disabled = true;
+            status.innerHTML = '<span class="material-icons spinning">sync</span> Refreshing...';
+            
+            const response = await fetch('{{ url_for("api.refresh_data") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                status.innerHTML = `<span class="material-icons success">check_circle</span> Updated ${data.details.itemCount} items`;
+                showAlert('success', 'Data successfully refreshed!');
+            } else {
+                throw new Error(data.error || 'Failed to refresh data');
+            }
+        } catch (error) {
+            status.innerHTML = '<span class="material-icons error">error</span> Refresh failed';
+            showAlert('error', error.message);
+        } finally {
+            button.disabled = false;
+            setTimeout(() => status.innerHTML = '', 5000);
+        }
+    }
+
+    function showAlert(type, message) {
+        const alert = document.getElementById('globalAlert');
+        alert.className = `global-alert ${type}`;
+        alert.textContent = message;
+        alert.style.display = 'block';
+        
+        setTimeout(() => {
+            alert.style.display = 'none';
+        }, 5000);
+    }
+
+    function toggleTheme() {
+        const current = document.documentElement.dataset.theme;
+        const next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.dataset.theme = next;
+        localStorage.setItem('theme', next);
+    }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

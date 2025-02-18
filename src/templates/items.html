@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tarkov Cultist Circle</title>
+    <script>
+        function fetchData() {
+            fetch('/api/fetch_graphql', {
+                method: 'POST',
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message);
+                }
+            })
+            .catch(error => alert('Error: ' + error));
+        }
+    </script>
+</head>
+<body>
+    <h1>Tarkov Cultist Circle</h1>
+    <button onclick="fetchData()">Fetch Latest Data</button>
+    <a href="{{ url_for('routes.fetch_and_save') }}">Fetch and Save Data</a>
+    <h2>Items</h2>
+    <ul>
+        {% for item in items %}
+            <li>{{ item.i.name }} - {{ item.i.basePrice }}</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
+{% extends "base.html" %}
+
+{% block title %}Items{% endblock %}
+
+{% block content %}
+<h2>Items</h2>
+<button onclick="fetchData()">Fetch Latest Data</button>
+<ul>
+    {% for item in items %}
+        <li>{{ item.i.name }} - {{ item.i.basePrice }}</li>
+    {% endfor %}
+</ul>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function fetchData() {
+        // ...existing fetchData function...
+    }
+</script>
+{% endblock %}

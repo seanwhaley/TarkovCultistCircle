@@ -1,0 +1,71 @@
+version: '3.8'
+services:
+  web:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: tarkovcultistcircle
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      neo4j_db:
+        condition: service_healthy
+    restart: always
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONWARNINGS=ignore:Unverified HTTPS request
+      - FLASK_ENV=development
+      - FLASK_APP=/app/src/app.py
+    command: flask run --host=0.0.0.0
+    networks:
+      - tarkov_network
+
+  neo4j_db:
+    image: neo4j:latest
+    container_name: neo4j_container
+    environment:
+      - NEO4J_AUTH=${DOCKER_NEO4J_AUTH}
+      - NEO4J_server_memory_heap_initial__size=${DOCKER_NEO4J_server_memory_heap_initial__size}
+      - NEO4J_server_memory_heap_max__size=${DOCKER_NEO4J_server_memory_heap_max__size}
+      - NEO4J_server_memory_pagecache_size=${DOCKER_NEO4J_server_memory_pagecache_size}
+      - NEO4J_ACCEPT_LICENSE_AGREEMENT=${DOCKER_NEO4J_ACCEPT_LICENSE_AGREEMENT}
+    ports:
+      - "${DOCKER_NEO4J_PORT}:7474"
+      - "${DOCKER_NEO4J_BOLT_PORT}:7687"
+      - "${DOCKER_NEO4J_HTTPS_PORT}:7473"
+    volumes:
+      - ./neo4j/data:/data
+      - ./neo4j/logs:/logs
+      - ./neo4j/import:/var/lib/neo4j/import
+      - ./neo4j/plugins:/plugins
+    restart: always
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 0
+              capabilities: [gpu]
+    command: ["neo4j", "console", "--verbose"]
+    healthcheck:
+      test: ["CMD", "neo4j-admin", "server", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tarkov_network
+
+networks:
+  tarkov_network:
+    driver: bridge
