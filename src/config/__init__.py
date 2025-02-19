@@ -88,9 +88,6 @@ config = {
     'default': DevelopmentConfig
 }
 
-__all__ = [
-    'Config', 
-    'config',
-    'ITEMS_QUERY',
-    'ITEM_BY_ID_QUERY'
-]
+from .config import Config, config
+
+__all__ = ['Config', 'config']

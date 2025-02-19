@@ -25,6 +25,12 @@ class Neo4jDB:
                 logger.error(f"Failed to initialize Neo4j: {str(e)}")
                 raise
 
+    def init_app(self, app):
+        self.driver = GraphDatabase.driver(
+            app.config['NEO4J_URI'],
+            auth=(app.config['NEO4J_USER'], app.config['NEO4J_PASSWORD'])
+        )
+
     @contextmanager
     def get_session(self):
         if not self.initialized:
@@ -42,3 +48,8 @@ class Neo4jDB:
             self.driver.close()
             self.initialized = False
             self.driver = None
+
+    def test_connection(self):
+        with self.driver.session() as session:
+            result = session.run("RETURN 1")
+            return result.single()[0] == 1

@@ -4,3 +4,4 @@ neo4j
 requests
 certifi
 gunicorn
+Flask_Cors

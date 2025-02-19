@@ -3,36 +3,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# GraphQL Queries
-ITEMS_QUERY = """
-query getItems($lang: String!, $ids: [ID!]) {
-    items(lang: $lang, ids: $ids) {
-        id name basePrice
-        buyFor { priceRUB vendor { name } }
-        categories { name }
-        fleaMarketFee
-        sellFor { priceRUB vendor { name } }
-        updated weight
-    }
-}
-"""
-
-ITEM_BY_ID_QUERY = """
-query getItem($id: ID!, $lang: String!) {
-    item(id: $id, lang: $lang) {
-        id name basePrice
-        buyFor { priceRUB vendor { name } }
-        categories { name }
-        fleaMarketFee
-        sellFor { priceRUB vendor { name } }
-        updated weight
-    }
-}
-"""
-
 class Config:
     """Base configuration class"""
-    # Flask settings
     SECRET_KEY = os.getenv('FLASK_SECRET_KEY', 'dev')
     DEBUG = False
     TESTING = False
@@ -44,7 +16,18 @@ class Config:
     
     # API settings
     GRAPHQL_ENDPOINT = os.getenv('GRAPHQL_ENDPOINT', 'https://api.tarkov.dev/graphql')
-    GRAPHQL_QUERY = ITEMS_QUERY  # Default query
+    GRAPHQL_QUERY = """
+    query getItems($lang: String!, $ids: [ID!]) {
+        items(lang: $lang, ids: $ids) {
+            id name basePrice
+            buyFor { priceRUB vendor { name } }
+            categories { name }
+            fleaMarketFee
+            sellFor { priceRUB vendor { name } }
+            updated weight
+        }
+    }
+    """
     GRAPHQL_VARIABLES = {
         'lang': os.getenv('GRAPHQL_LANG', 'en'),
         'ids': None
@@ -86,7 +69,5 @@ config = {
 
 __all__ = [
     'Config', 
-    'config',
-    'ITEMS_QUERY',
-    'ITEM_BY_ID_QUERY'
+    'config'
 ]

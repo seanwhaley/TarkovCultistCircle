@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimizer Index</title>
+</head>
+<body>
+    <h1>Optimizer Index</h1>
+    <p>Welcome to the optimizer index page.</p>
+</body>
+</html>
+
+{% extends "base.html" %}
+{% block title %}Optimizer{% endblock %}
+
+{% block content %}
+<div class="optimizer-container">
+    <h1>Item Price Optimizer</h1>
+    
+    <div class="optimizer-form">
+        <div class="form-group">
+            <label for="minPrice">Minimum Item Price:</label>
+            <input type="number" id="minPrice" value="400000" min="0">
+        </div>
+        
+        <div class="form-group">
+            <label for="maxItems">Maximum Items:</label>
+            <input type="number" id="maxItems" value="5" min="1" max="5">
+        </div>
+        
+        <button onclick="optimize()" class="btn-primary">Find Optimal Combinations</button>
+    </div>
+
+    <div id="results" class="results-container"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function optimize() {
+    const minPrice = document.getElementById('minPrice').value;
+    const maxItems = document.getElementById('maxItems').value;
+    
+    try {
+        const response = await fetch('{{ url_for("optimizer.optimize") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ minPrice, maxItems })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            displayResults(data.combinations);
+        } else {
+            throw new Error(data.error || 'Failed to optimize');
+        }
+    } catch (error) {
+        document.getElementById('error-message').textContent = error.message;
+        document.getElementById('error-message').style.display = 'block';
+    }
+}
+
+function displayResults(combinations) {
+    const resultsDiv = document.getElementById('results');
+    resultsDiv.innerHTML = combinations.map(combo => `
+        <div class="result-card">
+            <h3>Combination Value: ${combo.totalValue}₽</h3>
+            <ul>
+                ${combo.items.map(item => `
+                    <li>${item.name} - ${item.price}₽</li>
+                `).join('')}
+            </ul>
+        </div>
+    `).join('');
+}
+</script>
+{% endblock %}

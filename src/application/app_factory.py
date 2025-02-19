@@ -3,7 +3,7 @@ import click
 from flask import Flask
 from flask.cli import with_appcontext
 from flask_cors import CORS
-from src.config import Config, config  # Corrected import
+from src.config import config  # Updated import
 from src.core.database import Neo4jDB
 from src.core.error_handlers import register_error_handlers
 from src.core.graphql import GraphQLClient
@@ -19,11 +19,14 @@ class ApplicationFactory:
             config_name = os.getenv('FLASK_ENV', 'development')
 
         app = Flask(__name__,
-                   template_folder='../templates',
+                   template_folder='../src/templates',  # Ensure this points to the correct location
                    static_folder='../static')
         
         # Load configuration and initialize components
-        app.config.from_object(config[config_name])
+        app.config.from_object(config[config_name])  # Use the config dictionary
+        
+        # Enable debug mode for detailed error messages
+        app.config['DEBUG'] = True
         
         # Initialize in specific order
         ApplicationFactory._init_logging(app)
@@ -111,6 +114,8 @@ class ApplicationFactory:
                             id: $id,
                             name: $name,
                             basePrice: toString($basePrice),
+                            lastLowPrice: toString($lastLowPrice),
+                            avg24hPrice: toString($avg24hPrice),
                             updated: $updated
                         })
                         """
