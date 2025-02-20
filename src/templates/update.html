@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}Update Database - Tarkov Cultist Circle{% endblock %}
+
+{% block content %}
+<div class="mui-container">
+    <h1>Update Database</h1>
+    <form method="POST" action="{{ url_for('docs.push_to_database') }}" class="mui-form">
+        <button type="submit" class="mui-btn mui-btn--primary">Push to Database</button>
+    </form>
+</div>
+{% endblock %}

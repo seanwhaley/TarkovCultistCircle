@@ -1,0 +1,50 @@
+
+/* Custom styles for the application */
+body {
+    font-family: 'Roboto', sans-serif;
+}
+
+.container {
+    margin-top: 20px;
+}
+
+.error {
+    color: red;
+}
+
+.success {
+    color: green;
+}
+
+.global-alert {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    padding: 10px;
+    border-radius: 5px;
+    display: none;
+}
+
+.global-alert.success {
+    background-color: #4caf50;
+    color: white;
+}
+
+.global-alert.error {
+    background-color: #f44336;
+    color: white;
+}
+
+.global-alert.warning {
+    background-color: #ff9800;
+    color: white;
+}
+
+.material-icons.spinning {
+    animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

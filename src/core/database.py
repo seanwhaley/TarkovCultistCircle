@@ -1,4 +1,4 @@
-from neo4j import GraphDatabase
+from neo4j import GraphDatabase  # Ensure this import is accurate
 import logging
 from contextlib import contextmanager
 from typing import Optional, ClassVar
@@ -53,3 +53,7 @@ class Neo4jDB:
         with self.driver.session() as session:
             result = session.run("RETURN 1")
             return result.single()[0] == 1
+
+    def run_query(self, query, parameters=None):
+        with self.driver.session() as session:
+            return session.run(query, parameters)

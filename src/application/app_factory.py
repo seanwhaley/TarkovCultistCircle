@@ -1,20 +1,33 @@
+# Standard library imports
 import os
+import logging
+from typing import Optional
+
+# Third-party imports
 import click
-from flask import Flask
+from flask import Flask, render_template
 from flask.cli import with_appcontext
 from flask_cors import CORS
-from src.config import config  # Updated import
+from flask_graphql import GraphQLView
+from flask_jwt_extended import JWTManager
+from flask_migrate import Migrate
+from flask_sqlalchemy import SQLAlchemy
+from neo4j import GraphDatabase
+
+# Local imports
+from src.config.config import config
 from src.core.database import Neo4jDB
 from src.core.error_handlers import register_error_handlers
 from src.core.graphql import GraphQLClient
+from src.graphql.schema import schema
 from src.utils.logging import setup_logging
+from src.views import register_blueprints
 
 class ApplicationFactory:
     """Single responsibility factory for application components"""
     
     @staticmethod
-    def create_app(config_name=None):
-        """Create and configure the Flask application"""
+    def create_app(config_name: Optional[str] = None) -> Flask:
         if config_name is None:
             config_name = os.getenv('FLASK_ENV', 'development')
 
@@ -36,11 +49,30 @@ class ApplicationFactory:
         ApplicationFactory._register_error_handlers(app)
         ApplicationFactory._register_cli_commands(app)
         
+        # Initialize extensions
+        jwt = JWTManager(app)
+        db = SQLAlchemy(app)
+        migrate = Migrate(app, db)
+
+        # Initialize Neo4j driver with error handling
+        try:
+            neo4j_driver = GraphDatabase.driver(app.config['NEO4J_URI'], auth=(app.config['NEO4J_USER'], app.config['NEO4J_PASSWORD']))
+        except Exception as e:
+            logging.error(f"Failed to initialize Neo4j driver: {e}")
+            raise
+
+        # Add GraphQL endpoint
+        app.add_url_rule('/graphql', view_func=GraphQLView.as_view('graphql', schema=schema, graphiql=True))
+
+        # Define routes
+        @app.route('/')
+        def index():
+            return render_template('index.html')
+
         return app
 
     @staticmethod
-    def run_app(app=None):
-        """Run the Flask application"""
+    def run_app(app: Optional[Flask] = None) -> None:
         if app is None:
             app = ApplicationFactory.create_app()
         
@@ -51,45 +83,38 @@ class ApplicationFactory:
         app.run(host=host, port=port, debug=debug)
 
     @staticmethod
-    def _init_logging(app):
-        """Initialize application logging"""
+    def _init_logging(app: Flask) -> None:
         setup_logging(app)
 
     @staticmethod
-    def _init_database(app):
-        """Initialize database connection"""
+    def _init_database(app: Flask) -> Neo4jDB:
         db = Neo4jDB()
         db.initialize(
             app.config['NEO4J_URI'],
             app.config['NEO4J_USER'],
             app.config['NEO4J_PASSWORD']
         )
-        app.db = db
+        app.config['db'] = db
         return db
 
     @staticmethod
-    def _init_cors(app):
-        """Initialize CORS settings"""
+    def _init_cors(app: Flask) -> None:
         CORS(app)
 
     @staticmethod
-    def _register_blueprints(app):
-        """Register all blueprints"""
+    def _register_blueprints(app: Flask) -> None:
         from src.views import register_blueprints
         register_blueprints(app)
 
     @staticmethod
-    def _register_error_handlers(app):
-        """Register error handlers"""
+    def _register_error_handlers(app: Flask) -> None:
         register_error_handlers(app)
 
     @staticmethod
-    def _register_cli_commands(app):
-        """Register Flask CLI commands"""
+    def _register_cli_commands(app: Flask) -> None:
         @app.cli.command('ingest-data')
         @with_appcontext
-        def ingest_data_command():
-            """Fetch data from Tarkov API and store in Neo4j."""
+        def ingest_data_command() -> None:
             click.echo('Fetching data from Tarkov API...')
             
             client = GraphQLClient()
@@ -103,11 +128,9 @@ class ApplicationFactory:
             click.echo(f'Found {len(items)} items')
             
             try:
-                with app.db.get_session() as session:
-                    # Clean existing data
+                with app.config['db'].get_session() as session:
                     session.run("MATCH (i:Item) DETACH DELETE i")
                     
-                    # Create items
                     for item in items:
                         query = """
                         CREATE (i:Item {
@@ -124,3 +147,5 @@ class ApplicationFactory:
                 click.echo('Successfully ingested data into Neo4j')
             except Exception as e:
                 click.echo(f'Error saving to Neo4j: {str(e)}')
+
+create_app = ApplicationFactory.create_app

@@ -2,7 +2,7 @@ import click
 from flask.cli import with_appcontext
 from src.utils.graphql import fetch_tarkov_dev_data
 from src.db import get_db
-from src.config import Config
+from config.config import Config
 
 @click.command('ingest-data')
 @with_appcontext

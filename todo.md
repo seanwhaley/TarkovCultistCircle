@@ -15,8 +15,13 @@
 13. Provide detailed setup and usage instructions.
 14. Implement unit tests for the Flask application.
 15. Ensure all blueprints are located in the `src/blueprints` folder.
+16. Create a factory function to initialize the Flask app.
+17. Set up blueprints for modularity.
+18. Configure logging for the Flask application.
+19. Use configuration classes for different environments.
+20. Add docstrings and comments for clarity.
 
-# Current State Analysis
+## Current State Analysis
 
 1. Neo4j database is configured in `docker-compose.yml` and `.env` files.
 2. Flask application is set up in `Dockerfile` and `docker-compose.yml`.
@@ -27,318 +32,39 @@
 7. GraphQL endpoint is configured in `.env`.
 8. Memory and resource allocation for Neo4j is configured in `.env` and `docker-compose.yml`.
 9. Setup and usage instructions are provided in `docs/README.md`.
-10. Unit tests are not yet implemented.
+10. Unit tests are implemented for routes, models, services, utilities, error handling, authentication, database interactions, and form validation.
+11. Factory function to initialize the Flask app is implemented.
+12. Blueprints for modularity are set up.
+13. Logging for the Flask application is configured.
+14. Configuration classes for different environments are used.
+15. Docstrings and comments for clarity are added.
 
-# Future State Analysis
+## Future State Analysis
 
 1. Ensure Flask application follows best practices.
-2. Implement modularity using Blueprints.
-3. Configure logging for the Flask application.
-4. Use configuration classes for different environments.
-5. Move existing routes to blueprints.
-6. Write unit tests for the Flask application.
-7. Add docstrings and comments for clarity.
-8. Update documentation to include setup and usage instructions.
+2. Update documentation to include setup and usage instructions.
 
-# Overview of Work to Accomplish
+## Overview of Work to Accomplish
 
-1. Create a factory function to initialize the Flask app. **(Done)**
-2. Set up blueprints for modularity. **(Done)**
-3. Configure logging for the Flask application.
-4. Use configuration classes for different environments.
-5. Move existing routes to blueprints. **(Done)**
-6. Write unit tests for the Flask application.
-7. Add docstrings and comments for clarity.
-8. Update documentation to include setup and usage instructions.
+1. Update documentation to include setup and usage instructions.
 
-# Detailed Work Packages for Developers
+## Detailed Work Packages for Developers
 
-## Work Package 1: Create Factory Function
+### Work Package 1: Update Documentation with Setup and Usage Instructions
 
-### Business Requirement
+#### Business Requirement
 
-*   Implement a Flask application.
+* Provide detailed setup and usage instructions.
 
-### File to be Updated
+#### File to be Updated
 
-*   `src/__init__.py`
+* `docs/README.md`
 
-### What the File Needs to Accomplish
+#### What the File Needs to Accomplish
 
-*   Create a factory function to initialize the Flask app.
-*   Register blueprints within the factory function.
+* Update documentation to include setup and usage instructions.
 
-### Code Suggestions/Examples
-
-```python
-# filepath: src/__init__.py
-from flask import Flask
-from .config import Config
-
-def create_app(config_class=Config):
-    app = Flask(__name__)
-    app.config.from_object(config_class)
-    # Register blueprints
-    from .blueprints.auth import auth_bp
-    from .blueprints.main import main_bp
-    from .blueprints.api import api_bp
-    from .blueprints.items import items_bp
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(main_bp)
-    app.register_blueprint(api_bp)
-    app.register_blueprint(items_bp)
-    # Configure logging
-    configure_logging(app)
-    return app
-
-def configure_logging(app):
-    import logging
-    from logging.handlers import RotatingFileHandler
-    handler = RotatingFileHandler('app.log', maxBytes=10000, backupCount=1)
-    handler.setLevel(logging.INFO)
-    app.logger.addHandler(handler)
-```
-
-## Work Package 2: Set Up Blueprints
-
-### Business Requirement
-
-*   Implement modularity using Blueprints.
-
-### File to be Updated
-
-*   `src/blueprints/auth.py`
-*   `src/blueprints/main.py`
-*   `src/blueprints/api.py`
-*   `src/blueprints/items.py`
-
-### What the File Needs to Accomplish
-
-*   Define blueprints for different modules (e.g., `auth`, `main`, `api`, `items`).
-*   Register blueprints in the factory function.
-
-### Code Suggestions/Examples
-
-```python
-# filepath: src/blueprints/auth.py
-from flask import Blueprint
-
-auth_bp = Blueprint('auth', __name__)
-
-@auth_bp.route('/login')
-def login():
-    return "Login Page"
-
-@auth_bp.route('/logout')
-def logout():
-    return "Logout Page"
-```
-
-```python
-# filepath: src/blueprints/main.py
-from flask import Blueprint
-
-main_bp = Blueprint('main', __name__)
-
-@main_bp.route('/')
-def home():
-    return "Home Page"
-```
-
-```python
-# filepath: src/blueprints/api.py
-from flask import Blueprint
-
-api_bp = Blueprint('api', __name__)
-
-@api_bp.route('/data')
-def get_data():
-    return "Data Page"
-```
-
-```python
-# filepath: src/blueprints/items.py
-from flask import Blueprint, render_template, current_app, request, jsonify
-from http import HTTPStatus
-from typing: Union, Dict, Any
-from src.core.responses: success_response, error_response
-from src.services.factory: ServiceFactory
-
-items_bp = Blueprint('items', __name__, url_prefix='/items')
-
-@items_bp.route('/')
-def items_index() -> Union[str, tuple]:
-    """Items main page"""
-    try:
-        return render_template('items/index.html')
-    except Exception as e:
-        current_app.logger.error(f"Error rendering items: {str(e)}")
-        return error_response("Failed to render page", HTTPStatus.INTERNAL_SERVER_ERROR)
-
-@items_bp.route('/api/list')
-def list_items() -> Dict[str, Any]:
-    """API endpoint to list items"""
-    try:
-        item_service = ServiceFactory.create_item_service()
-        items = item_service.get_all_items()
-        return success_response({"items": items})
-    except Exception as e:
-        current_app.logger.error(f"Error listing items: {str(e)}")
-        return error_response("Failed to list items", HTTPStatus.INTERNAL_SERVER_ERROR)
-```
-
-## Work Package 3: Configure Logging
-
-### Business Requirement
-
-*   Configure logging for the Flask application.
-
-### File to be Updated
-
-*   `src/__init__.py`
-
-### What the File Needs to Accomplish
-
-*   Set up logging configuration in the factory function.
-*   Ensure logs are written to a file and console.
-
-### Code Suggestions/Examples
-
-```python
-# filepath: src/__init__.py
-def configure_logging(app):
-    import logging
-    from logging.handlers: RotatingFileHandler
-    handler = RotatingFileHandler('app.log', maxBytes=10000, backupCount=1)
-    handler.setLevel(logging.INFO)
-    app.logger.addHandler(handler)
-```
-
-## Work Package 4: Use Configuration Class
-
-### Business Requirement
-
-*   Use configuration classes for different environments.
-
-### File to be Updated
-
-*   `src/config.py`
-
-### What the File Needs to Accomplish
-
-*   Define configuration classes for different environments (development, production).
-*   Load the appropriate configuration in the factory function.
-
-### Code Suggestions/Examples
-
-```python
-# filepath: src/config.py
-class Config:
-    SECRET_KEY = 'your_secret_key'
-    NEO4J_URI = 'bolt://localhost:7687'
-    NEO4J_USER = 'neo4j'
-    NEO4J_PASSWORD = 'your_password'
-
-class DevelopmentConfig(Config):
-    DEBUG = True
-
-class ProductionConfig(Config):
-    DEBUG = False
-```
-
-## Work Package 5: Move Existing Routes to Blueprints
-
-### Business Requirement
-
-*   Move existing routes to blueprints.
-
-### File to be Updated
-
-*   `src/blueprints/main.py`
-
-### What the File Needs to Accomplish
-
-*   Ensure routes are defined in separate files under `src/blueprints`.
-
-### Code Suggestions/Examples
-
-```python
-# filepath: src/blueprints/main.py
-from flask import Blueprint
-
-main_bp = Blueprint('main', __name__)
-
-@main_bp.route('/')
-def home():
-    return "Home Page"
-```
-
-## Work Package 6: Write Unit Tests
-
-### Business Requirement
-
-*   Implement unit tests for the Flask application.
-
-### File to be Updated
-
-*   `tests/test_routes.py`
-
-### What the File Needs to Accomplish
-
-*   Write unit tests for the Flask application.
-*   Ensure tests cover routes, models, and utility functions.
-
-### Code Suggestions/Examples
-
-```python
-# filepath: tests/test_routes.py
-import unittest
-from src import create_app
-
-class RoutesTestCase(unittest.TestCase):
-    def setUp(self):
-        self.app = create_app()
-        self.client = self.app.test_client()
-
-    def test_home_route(self):
-        response = self.client.get('/')
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b'Home Page', response.data)
-
-if __name__ == '__main__':
-    unittest.main()
-```
-
-## Work Package 7: Add Docstrings and Comments
-
-### Business Requirement
-
-*   Add docstrings and comments for clarity.
-
-### File to be Updated
-
-*   All source files
-
-### What the File Needs to Accomplish
-
-*   Add docstrings to all functions and classes.
-*   Add comments to the codebase for clarity.
-
-## Work Package 8: Update Documentation
-
-### Business Requirement
-
-*   Provide detailed setup and usage instructions.
-
-### File to be Updated
-
-*   `docs/README.md`
-
-### What the File Needs to Accomplish
-
-*   Update documentation to include setup and usage instructions.
-
-### Code Suggestions/Examples
+#### Code Suggestions/Examples
 
 ```markdown
 # filepath: docs/README.md
@@ -365,7 +91,7 @@ docker-compose up --build
 
 ## Usage Instructions
 
-*   To run the tests:
+* To run the tests:
 
 ```bash
 python -m unittest discover tests
@@ -376,41 +102,43 @@ python -m unittest discover tests
 
 ## `src/`
 
-*   `__init__.py`: Factory function to initialize the Flask app, register blueprints, and configure logging.
-*   `config.py`: Configuration classes for different environments.
+* `__init__.py`: Factory function to initialize the Flask app, register blueprints, and configure logging.
+* `config.py`: Configuration classes for different environments.
 
 ## `src/blueprints/`
 
-*   `auth.py`: Authentication routes and logic.
-*   `main.py`: Main application routes.
-*   `api.py`: API routes and logic.
-*   `items.py`: Item-related routes.
+* `auth.py`: Authentication routes and logic.
+* `main.py`: Main application routes.
+* `api.py`: API routes and logic.
+* `items.py`: Item-related routes.
 
 ## `src/views/`
 
-*   `other_file.py`: Contains utility functions used across the application.
+* `other_file.py`: Contains utility functions used across the application.
 
 ## `tests/`
 
-*   `test_routes.py`: Unit tests for the Flask application routes.
+* `test_routes.py`: Unit tests for the Flask application routes.
+* `test_models.py`: Unit tests for the Flask application models.
+* `test_services.py`: Unit tests for the Flask application services.
+* `test_utils.py`: Unit tests for the Flask application utility functions.
+* `test_error_handling.py`: Unit tests for the Flask application error handling.
+* `test_auth.py`: Unit tests for the Flask application authentication and authorization.
+* `test_database.py`: Unit tests for the Flask application database interactions.
+* `test_forms.py`: Unit tests for the Flask application form validation.
 
 ## `docs/`
 
-*   `README.md`: Setup and usage instructions.
+* `README.md`: Setup and usage instructions.
 
 ## `Dockerfile`
 
-*   Ensure it is correctly set up to run the Flask application.
+* Ensure it is correctly set up to run the Flask application.
 
 ## `docker-compose.yml`
 
-*   Ensure it is correctly set up for multi-container setup with Neo4j and Flask.
+* Ensure it is correctly set up for multi-container setup with Neo4j and Flask.
 
 ## `.env`
 
-*   Ensure all sensitive information is stored in environment variables.
-````
-
-### Status Update
-
-All identified modifications have been completed. No further updates are needed at this time.
+* Ensure all sensitive information is stored in environment variables.

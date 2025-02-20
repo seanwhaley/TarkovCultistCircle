@@ -1,7 +1,7 @@
 import logging
 import logging.handlers
 from flask import has_request_context, request
-from src.config import Config  # Updated import path
+from config.config import Config  # Updated import path
 
 class RequestFormatter(logging.Formatter):
     def format(self, record):

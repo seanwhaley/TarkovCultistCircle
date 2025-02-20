@@ -1,6 +1,7 @@
 from typing import Dict, Any, Optional
 import requests
-from src.config import Config, ITEMS_QUERY, ITEM_BY_ID_QUERY
+from src.config.config import Config
+from src.config.queries import ITEMS_QUERY, ITEM_BY_ID_QUERY
 
 class GraphQLClient:
     def __init__(self, endpoint: Optional[str] = None):
@@ -10,7 +11,7 @@ class GraphQLClient:
     def execute_query(self, query: Optional[str] = None, variables: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Execute GraphQL query and return response"""
         query = query or ITEMS_QUERY
-        variables = variables or Config.GRAPHQL_VARIABLES
+        variables = variables or {}
         
         response = self.session.post(
             self._endpoint,
