@@ -1,77 +1,83 @@
-from flask import Blueprint, render_template, request, jsonify, flash
-from src.core.graphql import GraphQLClient
-from src.db import get_db
-from src.models import Item
+# Standard library imports
+import logging
+import platform
+import sys
+from functools import wraps
+from typing import Dict, Any
+
+# Third-party imports
+from flask import Blueprint, current_app, abort, render_template
+
+# Local imports
+from core.database import get_db
+from core.security import admin_required
 
 debug_bp = Blueprint('debug', __name__)
 
-@debug_bp.route('/debug')
-def debug():
-    """
-    Debug page route.
+def debug_only(f):
+    """Decorator to ensure route only works in debug mode"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_app.config.get('DEBUG', False) or \
+           not current_app.config.get('ENABLE_DEBUG_ROUTES', False):
+            abort(404)
+        return f(*args, **kwargs)
+    return decorated_function
 
-    Returns:
-        Rendered debug page template.
-    """
-    return render_template('debug.html')
+@debug_bp.route('/')
+@admin_required
+@debug_only
+def index() -> str:
+    info = {
+        'python_version': sys.version,
+        'platform': platform.platform(),
+        'environment': current_app.config['FLASK_ENV'],
+        'debug_mode': current_app.config['DEBUG'],
+        'neo4j_status': _check_neo4j_connection()
+    }
+    return render_template('pages/debug/index.html', info=info)
 
-@debug_bp.route('/debug/graphql', methods=['POST'])
-def test_graphql():
-    """
-    Test GraphQL query.
+@debug_bp.route('/config')
+@admin_required
+@debug_only
+def debug_config() -> str:
+    safe_config = {k: v for k, v in current_app.config.items() 
+                  if not k.startswith('_') and k.isupper()}
+    return render_template('pages/debug/config.html', config=safe_config)
 
-    Returns:
-        JSON response with query result.
-    """
-    query = request.json.get('query')
-    client = GraphQLClient()
+@debug_bp.route('/routes')
+@admin_required
+@debug_only
+def debug_routes() -> str:
+    routes = []
+    for rule in current_app.url_map.iter_rules():
+        routes.append({
+            'endpoint': rule.endpoint,
+            'methods': list(rule.methods),
+            'path': rule.rule
+        })
+    return render_template('pages/debug/routes.html', routes=routes)
+
+@debug_bp.route('/environment')
+@admin_required
+@debug_only
+def environment() -> str:
+    """Display non-sensitive environment configuration"""
+    excluded_keys = current_app.config.get('DEBUG_EXCLUDED_CONFIG_KEYS', 
+                                         ['KEY', 'PASSWORD', 'SECRET', 'TOKEN', 'CREDENTIALS'])
+    safe_config = {
+        k: v for k, v in current_app.config.items()
+        if not any(secret.lower() in k.lower() for secret in excluded_keys)
+        and not k.startswith('_')
+    }
+    return render_template('pages/debug/environment.html', config=safe_config)
+
+def _check_neo4j_connection() -> str:
+    """Check Neo4j connection status"""
     try:
-        result = client.execute(query)
-        return jsonify(result)
+        db = get_db()
+        db.test_connection()
+        return "Connected"
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@debug_bp.route('/debug/neo4j', methods=['POST'])
-def test_neo4j():
-    """
-    Test Neo4j query.
-
-    Returns:
-        JSON response with query result.
-    """
-    query = request.json.get('query')
-    db = get_db()
-    try:
-        result = db.query(query)
-        return jsonify(result)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-    finally:
-        db.close()
-
-@debug_bp.route('/debug/import_graphql', methods=['POST'])
-def import_graphql():
-    """
-    Import GraphQL data into Neo4j.
-
-    Returns:
-        JSON response with import status.
-    """
-    items = request.json.get('items', [])
-    db = get_db()
-    try:
-        for item_data in items:
-            item = Item.nodes.get_or_none(uid=item_data['id'])
-            if not item:
-                item = Item(uid=item_data['id'])
-            item.name = item_data['name']
-            item.base_price = item_data['basePrice']
-            item.last_low_price = item_data.get('lastLowPrice')
-            item.avg_24h_price = item_data.get('avg24hPrice')
-            item.updated_at = item_data['updated']
-            item.save()
-        return jsonify({"message": "Data imported successfully"}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-    finally:
-        db.close()
+        logging.error(f"Neo4j connection error: {str(e)}")
+        return f"Error: {str(e)}"

@@ -1,16 +1,21 @@
-from src.db import Neo4jDB
+from src.core.db import Neo4jConnection, get_db
 
 class ExtensionsManager:
-    _instance: "ExtensionsManager | None" = None
+    _instance = None
+    _initialized = False
     
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(ExtensionsManager, cls).__new__(cls)
-            cls._instance.db = Neo4jDB()
         return cls._instance
 
+    def __init__(self):
+        if not self._initialized:
+            self.db = get_db()
+            self._initialized = True
+    
     @classmethod
-    def get_db(cls):
+    def get_db(cls) -> Neo4jConnection:
         return cls().db
 
 extensions = ExtensionsManager()

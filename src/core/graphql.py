@@ -1,34 +1,54 @@
-from typing import Dict, Any, Optional
 import requests
-from src.config.config import Config
-from src.config.queries import ITEMS_QUERY, ITEM_BY_ID_QUERY
+import logging
+import os
+from typing import Optional, Dict, Any
+from flask import current_app
+from src.graphql.queries import QUERIES, MUTATIONS
+
+logger = logging.getLogger(__name__)
 
 class GraphQLClient:
     def __init__(self, endpoint: Optional[str] = None):
+        config = current_app.config
+        self.endpoint = endpoint or config['GRAPHQL_ENDPOINT']
+        self.timeout = config['API_TIMEOUT']
         self.session = requests.Session()
-        self._endpoint = endpoint or Config.GRAPHQL_ENDPOINT
+        self.session.timeout = self.timeout
 
-    def execute_query(self, query: Optional[str] = None, variables: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Execute GraphQL query and return response"""
-        query = query or ITEMS_QUERY
-        variables = variables or {}
-        
-        response = self.session.post(
-            self._endpoint,
-            json={'query': query, 'variables': variables},
-            headers={'Content-Type': 'application/json'}
+    def execute_query(self, query: str, variables: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        try:
+            config = current_app.config
+            headers = {
+                'Authorization': f"{config['AUTH_HEADER_TYPE']} {config.get('API_KEY', '')}",
+                'Content-Type': 'application/json'
+            }
+            response = self.session.post(
+                self.endpoint,
+                headers=headers,
+                json={'query': query, 'variables': variables or {}}
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            logger.error(f"GraphQL query failed: {str(e)}")
+            return {'errors': [{'message': str(e)}]}
+
+    def get_items(self):
+        return self.execute_query(QUERIES['GET_ITEMS'])
+
+    def get_item(self, item_id: str):
+        return self.execute_query(
+            QUERIES['GET_ITEM'],
+            variables={'id': item_id}
         )
-        response.raise_for_status()
-        return response.json()
 
-    def fetch_items(self, lang: str = 'en', item_ids: Optional[list] = None) -> Dict[str, Any]:
-        """Fetch items from Tarkov API"""
-        variables = {'lang': lang}
-        if item_ids:
-            variables['ids'] = ','.join(item_ids)
-        return self.execute_query(ITEMS_QUERY, variables)
-
-    def fetch_item(self, item_id: str, lang: str = 'en') -> Dict[str, Any]:
-        """Fetch a single item by ID"""
-        variables = {'id': item_id, 'lang': lang}
-        return self.execute_query(ITEM_BY_ID_QUERY, variables)
+    def update_price(self, item_id: str, price: float):
+        return self.execute_query(
+            MUTATIONS['UPDATE_PRICE'],
+            variables={
+                'input': {
+                    'itemId': item_id,
+                    'price': price
+                }
+            }
+        )

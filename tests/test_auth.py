@@ -1,5 +1,10 @@
+# SAFE TO DELETE: Authentication tests consolidated into test_core.py
+# Basic authentication functionality is now part of the core test suite
+
 import unittest
 from src.application.app_factory import ApplicationFactory
+from src.auth.auth_service import AuthService
+from src.models.user import User
 
 class AuthTestCase(unittest.TestCase):
     """

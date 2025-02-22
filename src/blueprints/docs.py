@@ -7,6 +7,12 @@ docs_bp = Blueprint('docs', __name__)
 
 @docs_bp.route('/update_docs', methods=['GET'])
 def update_docs():
+    """
+    Route to update the API schema documentation.
+
+    Returns:
+        JSON response indicating success or failure.
+    """
     try:
         save_schema_documentation()
         return jsonify({"message": "API schema documentation updated successfully."}), 200
@@ -15,6 +21,12 @@ def update_docs():
 
 @docs_bp.route('/fetch_api_data', methods=['POST'])
 def fetch_api_data():
+    """
+    Route to fetch data from the API and store it in the session.
+
+    Returns:
+        Redirects to the update page.
+    """
     try:
         client = GraphQLClient()
         result = client.fetch_items()
@@ -26,12 +38,19 @@ def fetch_api_data():
 
 @docs_bp.route('/push_to_database', methods=['POST'])
 def push_to_database():
+    """
+    Route to push the fetched API data to the Neo4j database.
+
+    Returns:
+        Redirects to the update page.
+    """
     try:
         items = session.get('api_data', [])
         if not items:
             flash("No API data available to push to the database.", "warning")
             return redirect(url_for('docs.update_database'))
         
+        # Process the result and update the database
         for item_data in items:
             item = Item.nodes.get_or_none(uid=item_data['id'])
             if not item:
@@ -50,4 +69,10 @@ def push_to_database():
 
 @docs_bp.route('/update_database', methods=['GET', 'POST'])
 def update_database():
+    """
+    Route to update the database by calling the API.
+
+    Returns:
+        Rendered template or redirects to the update page.
+    """
     return render_template('update.html')
