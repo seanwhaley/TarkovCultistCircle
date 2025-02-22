@@ -1,0 +1,362 @@
+/* Material Item Card */
+.item-card {
+    display: flex;
+    align-items: center;
+    padding: var(--md-sys-spacing-3);
+    margin-bottom: var(--md-sys-spacing-3);
+    background-color: var(--md-sys-color-surface);
+    border-radius: var(--md-sys-shape-corner-medium);
+    box-shadow: var(--md-sys-elevation-level1);
+    transition: box-shadow var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized);
+}
+
+.item-card:hover {
+    box-shadow: var(--md-sys-elevation-level2);
+}
+
+.item-card__icon {
+    margin-right: var(--md-sys-spacing-3);
+    color: var(--md-sys-color-primary);
+}
+
+.item-card__content {
+    flex-grow: 1;
+}
+
+.item-card__price {
+    font-family: var(--md-sys-typescale-body-medium-font);
+    color: var(--md-sys-color-on-surface);
+}
+
+/* Material Data Table */
+.md-table {
+    width: 100%;
+    background-color: var(--md-sys-color-surface);
+    border-radius: var(--md-sys-shape-corner-medium);
+    overflow: hidden;
+    box-shadow: var(--md-elevation-1);
+}
+
+.md-table thead th {
+    font-family: var(--md-sys-typescale-title-small-font);
+    letter-spacing: var(--md-sys-typescale-title-small-tracking);
+    font-weight: var(--md-sys-typescale-title-small-weight);
+    color: var(--md-sys-color-on-surface-variant);
+    padding: var(--md-sys-spacing-3);
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.md-table tbody td {
+    padding: 1rem;
+    border-bottom: 1px solid rgba(var(--md-on-surface-rgb), 0.08);
+}
+
+.md-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Material Fab Button */
+.fab {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background-color: var(--md-primary);
+    color: var(--md-on-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--md-elevation-2);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    border: none;
+    cursor: pointer;
+}
+
+.fab:hover {
+    box-shadow: var(--md-elevation-4);
+    transform: scale(1.05);
+}
+
+.fab:active {
+    transform: scale(0.95);
+}
+
+/* Material Chip */
+.chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    border-radius: 16px;
+    background-color: rgba(var(--md-on-surface-rgb), 0.08);
+    color: var(--md-on-surface);
+    font-size: 0.875rem;
+    line-height: 1;
+    user-select: none;
+}
+
+.chip .material-icons {
+    font-size: 18px;
+    margin-right: 0.25rem;
+}
+
+.chip--clickable {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.chip--clickable:hover {
+    background-color: rgba(var(--md-on-surface-rgb), 0.12);
+}
+
+/* Material Progress */
+.progress-circular {
+    position: relative;
+    width: 48px;
+    height: 48px;
+}
+
+.progress-circular__svg {
+    transform: rotate(-90deg);
+}
+
+.progress-circular__circle {
+    fill: none;
+    stroke: var(--md-primary);
+    stroke-width: 4;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.3s ease;
+}
+
+/* Material Search Field */
+.search-field {
+    position: relative;
+    width: 100%;
+}
+
+.search-field__input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 3rem;
+    border: none;
+    border-radius: 4px;
+    background-color: rgba(var(--md-on-surface-rgb), 0.04);
+    color: var(--md-on-surface);
+    transition: background-color 0.2s ease;
+}
+
+.search-field__input:focus {
+    background-color: rgba(var(--md-on-surface-rgb), 0.08);
+    outline: none;
+}
+
+.search-field__icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(var(--md-on-surface-rgb), 0.6);
+}
+
+/* Material Menu */
+.menu {
+    position: absolute;
+    min-width: 180px;
+    background-color: var(--md-surface);
+    border-radius: 4px;
+    box-shadow: var(--md-elevation-2);
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.menu__item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    color: var(--md-on-surface);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.menu__item:hover {
+    background-color: rgba(var(--md-on-surface-rgb), 0.04);
+}
+
+.menu__item .material-icons {
+    margin-right: 0.75rem;
+    font-size: 20px;
+}
+
+/* Material Bottom Sheet */
+.bottom-sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--md-surface);
+    border-radius: 16px 16px 0 0;
+    box-shadow: var(--md-elevation-4);
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+    z-index: 1000;
+}
+
+.bottom-sheet--open {
+    transform: translateY(0);
+}
+
+.bottom-sheet__header {
+    padding: 1rem;
+    border-bottom: 1px solid rgba(var(--md-on-surface-rgb), 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.bottom-sheet__content {
+    padding: 1rem;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+/* Utility Classes */
+.elevation-1 { box-shadow: var(--md-elevation-1); }
+.elevation-2 { box-shadow: var(--md-elevation-2); }
+.elevation-4 { box-shadow: var(--md-elevation-4); }
+
+.hover-elevation {
+    transition: box-shadow 0.2s ease;
+}
+
+.hover-elevation:hover {
+    box-shadow: var(--md-elevation-2);
+}
+
+.surface {
+    background-color: var(--md-surface);
+    color: var(--md-on-surface);
+}
+
+.primary {
+    background-color: var(--md-primary);
+    color: var(--md-on-primary);
+}
+
+.secondary {
+    background-color: var(--md-secondary);
+    color: var(--md-on-secondary);
+}
+
+/* Using Material Web Components when possible, fallback to styled HTML */
+md-card,
+.md-card {
+    background-color: var(--md-sys-color-surface);
+    color: var(--md-sys-color-on-surface);
+    border-radius: var(--md-sys-shape-corner-medium);
+    padding: var(--md-sys-spacing-3);
+}
+
+md-button,
+.md-button {
+    font-family: var(--md-sys-typescale-label-large-font);
+    letter-spacing: var(--md-sys-typescale-label-large-tracking);
+    font-weight: var(--md-sys-typescale-label-large-weight);
+}
+
+/* Form fields */
+md-filled-text-field,
+.md-text-field {
+    width: 100%;
+    margin: var(--md-sys-spacing-2) 0;
+}
+
+/* Data tables */
+.md-table {
+    width: 100%;
+    background-color: var(--md-sys-color-surface);
+    border-radius: var(--md-sys-shape-corner-medium);
+    overflow: hidden;
+}
+
+.md-table thead th {
+    font-family: var(--md-sys-typescale-title-small-font);
+    letter-spacing: var(--md-sys-typescale-title-small-tracking);
+    font-weight: var(--md-sys-typescale-title-small-weight);
+    color: var(--md-sys-color-on-surface-variant);
+    padding: var(--md-sys-spacing-3);
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+/* Dialogs */
+md-dialog,
+.md-dialog {
+    border-radius: var(--md-sys-shape-corner-large);
+    background-color: var(--md-sys-color-surface);
+    color: var(--md-sys-color-on-surface);
+}
+
+/* Loading indicators */
+.md-progress {
+    color: var(--md-sys-color-primary);
+}
+
+/* List items */
+md-list-item,
+.md-list-item {
+    padding: var(--md-sys-spacing-2) var(--md-sys-spacing-3);
+    color: var(--md-sys-color-on-surface);
+}
+
+/* Chips */
+md-chip,
+.md-chip {
+    background-color: var(--md-sys-color-surface-variant);
+    color: var(--md-sys-color-on-surface-variant);
+    border-radius: var(--md-sys-shape-corner-large);
+    padding: var(--md-sys-spacing-1) var(--md-sys-spacing-2);
+}
+
+/* Bottom sheets */
+.md-bottom-sheet {
+    background-color: var(--md-sys-color-surface);
+    color: var(--md-sys-color-on-surface);
+    border-radius: var(--md-sys-shape-corner-extra-large) var(--md-sys-shape-corner-extra-large) 0 0;
+    padding: var(--md-sys-spacing-3);
+}
+
+/* FAB */
+md-fab,
+.md-fab {
+    background-color: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+    border-radius: var(--md-sys-shape-corner-large);
+}
+
+/* State layers */
+.state-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.state-layer--hover {
+    background-color: var(--md-sys-color-on-surface);
+    opacity: var(--md-sys-state-hover-state-layer-opacity);
+}
+
+.state-layer--pressed {
+    background-color: var(--md-sys-color-on-surface);
+    opacity: var (--md-sys-state-pressed-state-layer-opacity);
+}
+
+/* Focus rings */
+:focus-visible {
+    outline: 2px solid var(--md-sys-color-primary);
+    outline-offset: 2px;
+}
+
+/* Motion */
+.md-transition {
+    transition-duration: var(--md-sys-motion-duration-medium4);
+    transition-timing-function: var(--md-sys-motion-easing-emphasized);
+}

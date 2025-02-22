@@ -1,0 +1,21 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Login - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="mui-container">
+    <div class="auth-form">
+        <h1>Login</h1>
+        <form method="POST" action="{{ url_for('auth.login') }}" class="mui-form">
+            {{ form.csrf_token }}
+            <div class="mui-textfield">
+                {{ form.username(placeholder="Username", required=true) }}
+            </div>
+            <div class="mui-textfield">
+                {{ form.password(placeholder="Password", required=true) }}
+            </div>
+            <button type="submit" class="mui-btn mui-btn--primary">Login</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

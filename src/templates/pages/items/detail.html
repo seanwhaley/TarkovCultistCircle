@@ -1,0 +1,57 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}{{ item.name }} - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="mui-container">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('items.index') }}">Items</a></li>
+            <li class="breadcrumb-item active">{{ item.name }}</li>
+        </ol>
+    </nav>
+
+    <div class="item-detail card">
+        <div class="card-body">
+            <h1>{{ item.name }}</h1>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <dl class="row">
+                        <dt class="col-sm-4">Base Price</dt>
+                        <dd class="col-sm-8">{{ item.base_price }}₽</dd>
+                        
+                        <dt class="col-sm-4">Last Low Price</dt>
+                        <dd class="col-sm-8">{{ item.last_low_price }}₽</dd>
+                        
+                        <dt class="col-sm-4">24h Average</dt>
+                        <dd class="col-sm-8">{{ item.avg_24h_price }}₽</dd>
+                        
+                        <dt class="col-sm-4">Status</dt>
+                        <dd class="col-sm-8">
+                            {% if item.blacklisted %}
+                                <span class="badge badge-danger">Blacklisted</span>
+                            {% endif %}
+                            {% if item.locked %}
+                                <span class="badge badge-warning">Locked</span>
+                            {% endif %}
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="item-actions mt-4">
+                <button type="button" class="mui-btn mui-btn--primary" data-toggle="modal" data-target="#priceModal">
+                    Override Price
+                </button>
+                <button type="button" class="mui-btn mui-btn--danger" data-toggle="modal" data-target="#deleteModal">
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include "components/modals/price_override.html" %}
+{% include "components/modals/delete_confirmation.html" %}
+{% endblock %}

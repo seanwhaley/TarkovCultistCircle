@@ -1,0 +1,21 @@
+{
+  "name": "tarkov-cultist-circle",
+  "version": "1.0.0",
+  "description": "Tarkov item optimization tool with Material Design",
+  "private": true,
+  "dependencies": {
+    "@material/web": "^1.0.0",
+    "@material/elevation": "^14.0.0",
+    "@material/icon-button": "^14.0.0",
+    "@material/ripple": "^14.0.0",
+    "@material/theme": "^14.0.0",
+    "@material/typography": "^14.0.0"
+  },
+  "devDependencies": {
+    "sass": "^1.43.4"
+  },
+  "scripts": {
+    "build": "sass scss:css --style compressed",
+    "watch": "sass scss:css --watch"
+  }
+}

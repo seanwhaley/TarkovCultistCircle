@@ -1,0 +1,27 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Configuration - Debug - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="mui-container">
+    <h1>Application Configuration</h1>
+    <div class="config-display">
+        <table class="mui-table mui-table--bordered">
+            <thead>
+                <tr>
+                    <th>Key</th>
+                    <th>Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for key, value in config.items()|sort %}
+                <tr>
+                    <td>{{ key }}</td>
+                    <td>{{ value|string|truncate(100) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

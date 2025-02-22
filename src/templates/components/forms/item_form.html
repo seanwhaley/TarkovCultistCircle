@@ -1,0 +1,14 @@
+{% from "macros/forms.html" import render_field %}
+
+<form method="POST" action="{{ url_for(action) }}" class="item-form">
+    {{ form.csrf_token }}
+    
+    {{ render_field(form.name, "Name", "form-control") }}
+    {{ render_field(form.price, "Price", "form-control") }}
+    {{ render_field(form.duration, "Duration", "form-control") }}
+    
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">{{ submit_text|default('Submit') }}</button>
+        <a href="{{ url_for('items.index') }}" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
