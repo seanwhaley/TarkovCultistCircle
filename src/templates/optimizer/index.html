@@ -1,67 +1,352 @@
 {% extends "base.html" %}
-{% block title %}Optimizer{% endblock %}
 
 {% block content %}
-<div class="optimizer-container">
-    <h1>Item Price Optimizer</h1>
-    
-    <div class="optimizer-form">
-        <div class="form-group">
-            <label for="minPrice">Minimum Item Price:</label>
-            <input type="number" id="minPrice" value="400000" min="0">
-        </div>
-        
-        <div class="form-group">
-            <label for="maxItems">Maximum Items:</label>
-            <input type="number" id="maxItems" value="5" min="1" max="5">
-        </div>
-        
-        <button onclick="optimize()" class="btn-primary">Find Optimal Combinations</button>
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h3 class="mb-0 d-flex align-items-center">
+            <i class="material-icons me-2">analytics</i>
+            Tarkov Item Optimizer
+        </h3>
+        <button class="btn btn-primary d-flex align-items-center" onclick="refreshData()">
+            <i class="material-icons me-2">refresh</i>
+            Refresh Data
+        </button>
     </div>
+    <div class="card-body">
+        <!-- Optimization Controls -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="minPrice" class="d-flex align-items-center">
+                        <i class="material-icons me-2">payments</i>
+                        Minimum Total Value (₽)
+                    </label>
+                    <input type="number" class="form-control" id="minPrice" value="400000">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="maxItems" class="d-flex align-items-center">
+                        <i class="material-icons me-2">apps</i>
+                        Maximum Items
+                    </label>
+                    <select class="form-control" id="maxItems">
+                        <option value="1">1 item</option>
+                        <option value="2">2 items</option>
+                        <option value="3">3 items</option>
+                        <option value="4">4 items</option>
+                        <option value="5" selected>5 items</option>
+                    </select>
+                </div>
+            </div>
+        </div>
 
-    <div id="results" class="results-container"></div>
+        <!-- Action Buttons -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <button class="btn btn-success d-flex align-items-center mx-auto" onclick="findCombinations()">
+                    <i class="material-icons me-2">search</i>
+                    Find Combinations
+                </button>
+            </div>
+        </div>
+
+        <!-- Results Table -->
+        <div class="table-responsive mb-4 d-none" id="resultsSection">
+            <h4 class="d-flex align-items-center">
+                <i class="material-icons me-2">format_list_bulleted</i>
+                Optimal Combinations
+            </h4>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Items</th>
+                        <th>Total Value</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="combinationsTable">
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Item Management -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0 d-flex align-items-center">
+                            <i class="material-icons me-2">lock</i>
+                            Locked Items
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="lockedItems" class="list-group">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0 d-flex align-items-center">
+                            <i class="material-icons me-2">block</i>
+                            Blacklisted Items
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="blacklistedItems" class="list-group">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+{% from "components/item_actions_modal.html" import item_actions_modal %}
+{{ item_actions_modal() }}
+
 {% endblock %}
 
 {% block scripts %}
 <script>
-async function optimize() {
-    const minPrice = document.getElementById('minPrice').value;
-    const maxItems = document.getElementById('maxItems').value;
+    let currentItemId = null;
     
-    try {
-        const response = await fetch('{{ url_for("optimizer.optimize") }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ minPrice, maxItems })
-        });
-        
-        const data = await response.json();
-        if (data.success) {
-            displayResults(data.combinations);
-        } else {
-            throw new Error(data.error || 'Failed to optimize');
-        }
-    } catch (error) {
-        document.getElementById('error-message').textContent = error.message;
-        document.getElementById('error-message').style.display = 'block';
+    function showError(message) {
+        showAlert(message, 'danger');
     }
-}
 
-function displayResults(combinations) {
-    const resultsDiv = document.getElementById('results');
-    resultsDiv.innerHTML = combinations.map(combo => `
-        <div class="result-card">
-            <h3>Combination Value: ${combo.totalValue}₽</h3>
-            <ul>
-                ${combo.items.map(item => `
-                    <li>${item.name} - ${item.price}₽</li>
-                `).join('')}
-            </ul>
-        </div>
-    `).join('');
-}
+    function showSuccess(message) {
+        showAlert(message, 'success');
+    }
+
+    async function findCombinations() {
+        try {
+            showLoading('Finding optimal combinations...');
+            const minPrice = document.getElementById('minPrice').value;
+            const maxItems = document.getElementById('maxItems').value;
+            
+            const response = await fetch('/optimize/optimize', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    minPrice: parseFloat(minPrice),
+                    maxItems: parseInt(maxItems)
+                })
+            });
+            
+            const data = await response.json();
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to find combinations');
+            }
+            
+            displayCombinations(data.combinations);
+        } catch (error) {
+            showError(error.message);
+        } finally {
+            hideLoading();
+        }
+    }
+
+    function displayCombinations(combinations) {
+        const table = document.getElementById('combinationsTable');
+        const section = document.getElementById('resultsSection');
+        
+        table.innerHTML = '';
+        section.classList.remove('d-none');
+        
+        combinations.forEach(combo => {
+            const row = document.createElement('tr');
+            
+            // Items column
+            const itemsCell = document.createElement('td');
+            const itemsList = document.createElement('ul');
+            itemsList.className = 'list-unstyled mb-0';
+            
+            combo.items.forEach(item => {
+                const li = document.createElement('li');
+                li.className = 'd-flex align-items-center mb-1';
+                li.innerHTML = `
+                    <i class="material-icons me-2 small">inventory_2</i>
+                    <a href="#" onclick="showItemActions('${item.id}')">${item.name}</a>
+                    <span class="ms-2">(${formatPrice(item.effectivePrice)})</span>
+                `;
+                itemsList.appendChild(li);
+            });
+            
+            itemsCell.appendChild(itemsList);
+            row.appendChild(itemsCell);
+            
+            // Total value column
+            const totalCell = document.createElement('td');
+            totalCell.className = 'price-display';
+            totalCell.textContent = formatPrice(combo.totalPrice);
+            row.appendChild(totalCell);
+            
+            // Actions column
+            const actionsCell = document.createElement('td');
+            const saveBtn = document.createElement('button');
+            saveBtn.className = 'btn btn-sm btn-primary d-flex align-items-center';
+            saveBtn.innerHTML = `
+                <i class="material-icons me-2">save</i>
+                Save
+            `;
+            saveBtn.onclick = () => saveCombination(combo);
+            actionsCell.appendChild(saveBtn);
+            row.appendChild(actionsCell);
+            
+            table.appendChild(row);
+        });
+    }
+
+    async function showItemActions(itemId) {
+        currentItemId = itemId;
+        const modal = new bootstrap.Modal(document.getElementById('itemActionModal'));
+        modal.show();
+    }
+
+    async function setPrice() {
+        try {
+            showLoading('Setting price override...');
+            const price = document.getElementById('priceOverride').value;
+            const duration = document.getElementById('duration').value;
+            
+            const response = await fetch('/optimize/price-override', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    itemId: currentItemId,
+                    price: parseFloat(price),
+                    duration: duration ? parseInt(duration) : null
+                })
+            });
+            
+            const data = await response.json();
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to set price');
+            }
+            
+            showSuccess('Price override set successfully');
+            bootstrap.Modal.getInstance(document.getElementById('itemActionModal')).hide();
+        } catch (error) {
+            showError(error.message);
+        } finally {
+            hideLoading();
+        }
+    }
+
+    async function toggleLock() {
+        try {
+            showLoading('Updating lock status...');
+            const duration = document.getElementById('duration').value;
+            
+            const response = await fetch('/optimize/lock', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    itemId: currentItemId,
+                    locked: true,
+                    duration: duration ? parseInt(duration) : null
+                })
+            });
+            
+            const data = await response.json();
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to toggle lock');
+            }
+            
+            showSuccess('Item lock status updated successfully');
+            bootstrap.Modal.getInstance(document.getElementById('itemActionModal')).hide();
+        } catch (error) {
+            showError(error.message);
+        } finally {
+            hideLoading();
+        }
+    }
+
+    async function toggleBlacklist() {
+        try {
+            showLoading('Updating blacklist status...');
+            const duration = document.getElementById('duration').value;
+            
+            const response = await fetch('/optimize/blacklist', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    itemId: currentItemId,
+                    blacklisted: true,
+                    duration: duration ? parseInt(duration) : null
+                })
+            });
+            
+            const data = await response.json();
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to toggle blacklist');
+            }
+            
+            showSuccess('Item blacklist status updated successfully');
+            bootstrap.Modal.getInstance(document.getElementById('itemActionModal')).hide();
+        } catch (error) {
+            showError(error.message);
+        } finally {
+            hideLoading();
+        }
+    }
+
+    async function saveCombination(combination) {
+        try {
+            showLoading('Saving combination...');
+            const response = await fetch('/optimize/history', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    items: combination.items.map(item => item.id),
+                    totalPrice: combination.totalPrice
+                })
+            });
+            
+            const data = await response.json();
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to save combination');
+            }
+            
+            showSuccess('Combination saved successfully');
+        } catch (error) {
+            showError(error.message);
+        } finally {
+            hideLoading();
+        }
+    }
+
+    async function refreshData() {
+        try {
+            showLoading('Refreshing data from Tarkov.dev API...');
+            const response = await fetch('/optimize/refresh', {
+                method: 'POST'
+            });
+            
+            const data = await response.json();
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to refresh data');
+            }
+            
+            showSuccess('Data refreshed successfully');
+        } catch (error) {
+            showError(error.message);
+        } finally {
+            hideLoading();
+        }
+    }
 </script>
 {% endblock %}

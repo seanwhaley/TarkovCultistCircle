@@ -1,126 +1,89 @@
-# TarkovCultistCircle
+# Tarkov Cultist Circle
 
-This project is a Python-based web application designed to interact with the [Tarkov API](https://api.tarkov.dev/graphql), store item data in a Neo4j database, and provide optimization and tracking features.
+A lightweight web application for optimizing Escape from Tarkov item combinations using Neo4j.
 
-## Key Features
+## Features
 
-- **Flask Web Framework** for the website interface
-- **Neo4j** chosen as the graph database for its rich relationship management
-- **Docker Compose** for containerizing both the application and database
-- **Environment Variables** for secure configuration management
-- **Material Design** for the user interface
-- **Automated Testing** for core features
-- **Comprehensive Documentation**
+- Item combination optimization
+- Price tracking
+- Basic market data integration
+- Simple Material Design UI
 
 ## Prerequisites
 
 - Docker and Docker Compose
-- Python 3.9+ (optional, for local development)
 - Git
 
 ## Quick Start
 
-1. Clone this repository
-2. Set up environment variables:
+1. Clone the repository
+2. Copy example.env to .env and configure
+3. Run:
+```bash
+docker-compose up -d
+```
+4. Access at http://localhost:5000
 
-   ```bash
-   cp example.env .env
-   # Edit .env with your configuration
-   ```
+## Development
 
-3. Start the application:
+### Setup
 
-   ```bash
-   docker-compose up --build
-   ```
+```bash
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-4. Visit `http://localhost:5000`
-
-## Environment Configuration
-
-### Required Variables
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| FLASK_SECRET_KEY | Flask session secret | `random_string_here` |
-| NEO4J_PASSWORD | Database password | `your_secure_password` |
-| DOCKER_NEO4J_AUTH | Neo4j auth string | `neo4j/your_password` |
-
-### Optional Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| FLASK_ENV | development | Flask environment |
-| FLASK_DEBUG | 1 | Enable debug mode |
-| NEO4J_URI | bolt://localhost:7687 | Neo4j connection URI |
-| NEO4J_USER | neo4j | Neo4j username |
-
-## Project Structure
-
-```text
-TarkovCultistCircle/
-├── templates/           # HTML templates
-├── static/             # Static assets (CSS, JS, images)
-├── src/                # Python source code
-│   ├── app.py         # Flask application
-│   ├── db.py          # Database operations
-│   └── routes.py      # Route definitions
-├── docs/              # Documentation
-│   ├── DB_STRUCTURE.md
-│   └── GRAPHQL_QUERIES.md
-├── tests/             # Test files
-├── docker-compose.yml # Docker configuration
-├── Dockerfile         # Application container definition
-├── requirements.txt   # Python dependencies
-└── example.env        # Environment template
+# Install dependencies
+pip install -r requirements.txt
 ```
 
-## Documentation
+### Testing
 
-- [Database Structure](docs/DB_STRUCTURE.md)
-- [GraphQL Queries](docs/GRAPHQL_QUERIES.md)
+```bash
+python -m pytest
+```
 
-## Development Setup
+### Project Structure
 
-1. Create virtual environment:
+```
+/
+├── docker-compose.yml    # Container configuration
+├── src/                  # Application code
+│   ├── app.py           # Main Flask application
+│   ├── models/          # Data models
+│   ├── views/           # Route handlers
+│   ├── static/          # CSS, JS files
+│   └── templates/       # HTML templates
+├── tests/               # Test cases
+└── requirements.txt     # Python dependencies
+```
 
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # or `venv\Scripts\activate` on Windows
-   ```
+### Documentation
 
-2. Install dependencies:
+Additional documentation has been consolidated here from the original multiple files. This simplified structure better matches the project scope and makes maintenance easier.
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+#### Database Schema
 
-3. Start Neo4j:
+Neo4j graph structure:
+- Items (nodes)
+- Relationships (edges)
+- Properties (name, price, etc.)
 
-   ```bash
-   docker-compose up neo4j_db
-   ```
+#### API Integration
 
-4. Run Flask:
+Simplified integration with Tarkov.dev API for basic item data.
 
-   ```bash
-   flask run
-   ```
-
-## Testing
-
-Run the test suite:
-
-   ```bash
-   python -m pytest
-   ```
-
-## Contributing
+#### Contributing 
 
 1. Fork the repository
-2. Create a feature branch
-3. Submit a pull request
+2. Create feature branch
+3. Submit pull request
+
+Issues and feature requests are tracked in GitHub Issues, but given the project scope, expect focused updates primarily for:
+- Bug fixes
+- Essential features
+- Critical security updates
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT License - See LICENSE file

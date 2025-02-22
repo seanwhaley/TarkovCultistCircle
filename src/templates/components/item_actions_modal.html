@@ -1,0 +1,133 @@
+{% macro item_actions_modal() %}
+<div class="modal fade" id="itemActionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title d-flex align-items-center">
+                    <i class="material-icons me-2">edit</i>
+                    Item Actions
+                </h5>
+                <button type="button" class="btn-icon" data-bs-dismiss="modal">
+                    <i class="material-icons">close</i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="item-info mb-3">
+                    <h6 id="itemName" class="d-flex align-items-center">
+                        <i class="material-icons me-2">inventory_2</i>
+                        <span></span>
+                    </h6>
+                    <p class="price-display mb-1 d-flex align-items-center" id="itemBasePrice">
+                        <i class="material-icons me-2">payments</i>
+                        <span></span>
+                    </p>
+                    <p class="price-display mb-0 d-flex align-items-center" id="itemCurrentPrice">
+                        <i class="material-icons me-2">price_change</i>
+                        <span></span>
+                    </p>
+                </div>
+                <div class="form-group mb-3">
+                    <label for="priceOverride" class="d-flex align-items-center mb-2">
+                        <i class="material-icons me-2">currency_ruble</i>
+                        Override Price (₽)
+                    </label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" id="priceOverride" min="0" step="1000">
+                        <button class="btn btn-primary d-flex align-items-center" type="button" onclick="setPrice()">
+                            <i class="material-icons me-2">save</i>
+                            Set
+                        </button>
+                    </div>
+                </div>
+                <div class="form-group mb-3">
+                    <label for="duration" class="d-flex align-items-center mb-2">
+                        <i class="material-icons me-2">schedule</i>
+                        Duration
+                    </label>
+                    <select class="form-control" id="duration">
+                        <option value="">Permanent</option>
+                        <option value="30">30 minutes</option>
+                        <option value="60">1 hour</option>
+                        <option value="180">3 hours</option>
+                        <option value="360">6 hours</option>
+                        <option value="720">12 hours</option>
+                        <option value="1440">24 hours</option>
+                    </select>
+                </div>
+                <div class="d-flex justify-content-between gap-3 mt-4">
+                    <button class="btn flex-grow-1 d-flex align-items-center justify-content-center" onclick="toggleLock()" id="lockButton">
+                        <i class="material-icons me-2">lock</i>
+                        <span>Lock Item</span>
+                    </button>
+                    <button class="btn flex-grow-1 d-flex align-items-center justify-content-center" onclick="toggleBlacklist()" id="blacklistButton">
+                        <i class="material-icons me-2">block</i>
+                        <span>Blacklist Item</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function updateItemActionModal(item) {
+    document.getElementById('itemName').querySelector('span').textContent = item.name;
+    document.getElementById('itemBasePrice').querySelector('span').textContent = `Base Price: ${formatPrice(item.basePrice)}`;
+    
+    const currentPriceEl = document.getElementById('itemCurrentPrice');
+    if (item.priceOverride) {
+        currentPriceEl.querySelector('span').textContent = `Current Override: ${formatPrice(item.priceOverride)}`;
+        currentPriceEl.classList.remove('d-none');
+    } else {
+        currentPriceEl.classList.add('d-none');
+    }
+    
+    const lockButton = document.getElementById('lockButton');
+    const lockIcon = lockButton.querySelector('.material-icons');
+    lockButton.querySelector('span').textContent = item.locked ? 'Unlock Item' : 'Lock Item';
+    lockIcon.textContent = item.locked ? 'lock_open' : 'lock';
+    lockButton.className = `btn flex-grow-1 d-flex align-items-center justify-content-center ${item.locked ? 'btn-success' : 'btn-warning'}`;
+    
+    const blacklistButton = document.getElementById('blacklistButton');
+    const blacklistIcon = blacklistButton.querySelector('.material-icons');
+    blacklistButton.querySelector('span').textContent = item.blacklisted ? 'Remove from Blacklist' : 'Blacklist Item';
+    blacklistIcon.textContent = item.blacklisted ? 'check_circle' : 'block';
+    blacklistButton.className = `btn flex-grow-1 d-flex align-items-center justify-content-center ${item.blacklisted ? 'btn-success' : 'btn-danger'}`;
+}
+</script>
+
+<style>
+.modal-content {
+    overflow: hidden;
+}
+
+.modal-header .btn-icon {
+    color: var(--md-on-surface);
+}
+
+.modal-header .material-icons,
+.item-info .material-icons,
+.form-group .material-icons {
+    font-size: 20px;
+}
+
+.price-display {
+    color: var(--md-on-surface);
+}
+
+.input-group .material-icons {
+    font-size: 18px;
+}
+
+#duration {
+    color: var(--md-on-surface);
+    background-color: var(--md-surface);
+    border-color: rgba(var(--md-on-surface-rgb), 0.12);
+}
+
+#duration:focus {
+    border-color: var(--md-primary);
+    box-shadow: none;
+}
+</style>
+{% endmacro %}

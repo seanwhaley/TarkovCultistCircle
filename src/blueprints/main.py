@@ -1,23 +1,19 @@
 from flask import Blueprint, render_template
+from flask_login import login_required
+from src.core.cache import cached
+from src.types.responses import ResponseType
 
 main_bp = Blueprint('main', __name__)
 
 @main_bp.route('/')
-def home():
-    """
-    Home page route.
+@cached(timeout=300)
+def index() -> ResponseType:
+    return render_template('pages/home/index.html')
 
-    Returns:
-        Rendered home page template.
-    """
-    return render_template('home.html')
+@main_bp.route('/about')
+def about() -> ResponseType:
+    return render_template('pages/about/index.html')
 
-@main_bp.route('/debug')
-def debug():
-    """
-    Debug page route.
-
-    Returns:
-        Rendered debug page template.
-    """
-    return render_template('debug.html')
+@main_bp.route('/contact')
+def contact() -> ResponseType:
+    return render_template('pages/contact/index.html')

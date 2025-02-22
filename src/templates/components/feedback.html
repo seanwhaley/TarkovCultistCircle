@@ -1,0 +1,127 @@
+{% macro alert(message, category='info', dismissible=true) %}
+<md-elevation></md-elevation>
+<md-card class="alert-card">
+    <div class="d-flex align-items-center">
+        <md-icon>
+            {%- if category == 'success' -%}check_circle
+            {%- elif category == 'danger' -%}error
+            {%- elif category == 'warning' -%}warning
+            {%- else -%}info
+            {%- endif -%}
+        </md-icon>
+        <span class="ms-2">{{ message }}</span>
+    </div>
+    {% if dismissible %}
+    <md-icon-button class="alert-close" onclick="this.closest('md-card').remove()">
+        <md-icon>close</md-icon>
+    </md-icon-button>
+    {% endif %}
+</md-card>
+{% endmacro %}
+
+{% macro toast_container() %}
+<div class="toast-container">
+    <md-elevation level="2"></md-elevation>
+</div>
+
+<script type="module">
+function showToast(message, type = 'success') {
+    const container = document.querySelector('.toast-container');
+    
+    const toast = document.createElement('md-card');
+    toast.classList.add('toast-card');
+    
+    const icon = type === 'success' ? 'check_circle' : 
+                type === 'danger' ? 'error' :
+                type === 'warning' ? 'warning' : 'info';
+    
+    toast.innerHTML = `
+        <div class="d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+                <md-icon>${icon}</md-icon>
+                <span class="ms-2">${message}</span>
+            </div>
+            <md-icon-button onclick="this.closest('md-card').remove()">
+                <md-icon>close</md-icon>
+            </md-icon-button>
+        </div>
+    `;
+    
+    container.appendChild(toast);
+    
+    // Auto remove after delay
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+</script>
+
+<style>
+.toast-container {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    z-index: 1000;
+}
+
+.toast-card {
+    margin-top: 0.5rem;
+    padding: 0.75rem;
+    min-width: 280px;
+    background-color: var(--md-sys-color-surface);
+    color: var(--md-sys-color-on-surface);
+    transition: opacity 0.3s var(--md-sys-motion-easing-emphasized);
+}
+
+.alert-card {
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background-color: var(--md-sys-color-surface);
+    color: var(--md-sys-color-on-surface);
+}
+
+.alert-close {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+}
+</style>
+{% endmacro %}
+
+{% macro loading(message="Processing...") %}
+<div id="loadingOverlay" class="loading-overlay d-none">
+    <md-elevation level="2"></md-elevation>
+    <div class="loading-content">
+        <md-circular-progress indeterminate></md-circular-progress>
+        <span class="loading-text mt-3">{{ message }}</span>
+    </div>
+</div>
+
+<style>
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(var(--md-sys-color-scrim-rgb), 0.32);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+}
+
+.loading-content {
+    padding: 2rem;
+    background-color: var(--md-sys-color-surface);
+    border-radius: var(--md-sys-shape-corner-large);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.loading-text {
+    color: var(--md-sys-color-on-surface);
+    font-family: var(--md-sys-typescale-body-medium-font);
+}
+</style>
+{% endmacro %}

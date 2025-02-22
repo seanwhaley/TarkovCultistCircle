@@ -1,0 +1,21 @@
+<div class="card item-card mb-3">
+    <div class="card-body">
+        <h5 class="card-title">{{ item.name }}</h5>
+        <p class="card-text">Base Price: {{ item.base_price }}</p>
+        {% if item.blacklisted %}
+            <span class="badge badge-danger">Blacklisted</span>
+        {% endif %}
+        {% if item.locked %}
+            <span class="badge badge-warning">Locked</span>
+        {% endif %}
+        <div class="btn-group mt-2">
+            <button type="button" class="btn btn-sm btn-primary price-override-btn" 
+                    data-toggle="modal" data-target="#priceModal" 
+                    data-item-id="{{ item.uid }}">
+                Override Price
+            </button>
+            <a href="{{ url_for('items.detail', item_id=item.uid) }}" 
+               class="btn btn-sm btn-info">Details</a>
+        </div>
+    </div>
+</div>

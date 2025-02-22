@@ -1,0 +1,53 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Items - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="mui-container">
+    <h1>Items</h1>
+    <button onclick="fetchData()" class="mui-btn mui-btn--primary">Fetch Latest Data</button>
+    <table class="mui-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Base Price</th>
+                <th>Last Low Price</th>
+                <th>Avg 24h Price</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ item['i']['name'] }}</td>
+                <td>{{ item['i']['base_price'] }}</td>
+                <td>{{ item['i']['last_low_price'] }}</td>
+                <td>{{ item['i']['avg_24h_price'] }}</td>
+                <td>
+                    <!-- ...existing action forms... -->
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function fetchData() {
+        fetch('/api/fetch_graphql', {
+            method: 'POST',
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(error => alert('Error: ' + error));
+    }
+</script>
+{% endblock %}

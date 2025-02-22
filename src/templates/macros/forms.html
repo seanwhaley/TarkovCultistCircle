@@ -1,0 +1,28 @@
+{% macro render_field(field, label='', class='') %}
+  <div class="form-group">
+    {% if label %}
+      <label for="{{ field.id }}">{{ label }}</label>
+    {% endif %}
+    {{ field(class_='form-control ' + class) }}
+    {% if field.errors %}
+      {% for error in field.errors %}
+        <small class="text-danger">{{ error }}</small>
+      {% endfor %}
+    {% endif %}
+  </div>
+{% endmacro %}
+
+{% macro render_alerts() %}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+{% endmacro %}

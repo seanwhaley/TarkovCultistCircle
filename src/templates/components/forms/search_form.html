@@ -1,0 +1,31 @@
+{% from "macros/forms.html" import render_field %}
+
+<form method="GET" action="{{ request.path }}" class="search-form mb-4">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="input-group">
+                <input type="text" 
+                       name="q" 
+                       class="form-control" 
+                       placeholder="Search items..." 
+                       value="{{ request.args.get('q', '') }}">
+                <div class="input-group-append">
+                    <button class="btn btn-outline-secondary" type="submit">Search</button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-inline justify-content-end">
+                <select name="sort" class="form-control mr-2">
+                    <option value="name" {% if request.args.get('sort') == 'name' %}selected{% endif %}>Name</option>
+                    <option value="price" {% if request.args.get('sort') == 'price' %}selected{% endif %}>Price</option>
+                </select>
+                <select name="filter" class="form-control">
+                    <option value="all" {% if request.args.get('filter') == 'all' %}selected{% endif %}>All</option>
+                    <option value="blacklisted" {% if request.args.get('filter') == 'blacklisted' %}selected{% endif %}>Blacklisted</option>
+                    <option value="locked" {% if request.args.get('filter') == 'locked' %}selected{% endif %}>Locked</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</form>
