@@ -19,12 +19,15 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+.mypy_cache/
+.pytest_cache/
 
-# Virtual Environment
+# Virtual Environments
 venv/
 env/
 ENV/
 .env
+.venv/
 
 # IDE
 .idea/
@@ -59,7 +62,7 @@ coverage.xml
 *.cover
 .hypothesis/
 
-# Node (for potential future frontend)
+# Node (frontend)
 node_modules/
 static/node_modules/
 npm-debug.log*
@@ -67,18 +70,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # Environment variables
-.env
+.env 
 
 # But allow example.env
 !example.env
-```
-
-This .gitignore file:
-1. Ignores Python bytecode and virtual environments
-2. Excludes IDE-specific files
-3. Ignores Jupyter notebook checkpoints
-4. Excludes Docker override files
-5. Ignores Neo4j data directory
-6. Excludes logs and test coverage files
-7. Includes Node.js ignores for potential future frontend work
-8. Importantly ignores the .env file containing secrets
