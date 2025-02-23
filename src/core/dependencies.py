@@ -3,16 +3,13 @@ from typing import AsyncGenerator, Callable, Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from redis.asyncio import Redis
 from neo4j import AsyncGraphDatabase
 
 from src.services.tarkov_client import TarkovClient
 from src.services.optimizer import ItemOptimizer
-from src.core.cache import CACHE
 from src.config.settings import get_settings
 from src.core.config import Settings
 from src.core.database import DatabaseManager
-from src.core.redis import RedisManager
 from src.models.user import User
 from src.services.auth_service import AuthService
 from src.services.item_service import ItemService
@@ -27,15 +24,6 @@ async def get_db():
         yield DatabaseManager()
     finally:
         await DatabaseManager.close()
-
-async def get_redis() -> AsyncGenerator[Redis, None]:
-    """Get Redis connection."""
-    try:
-        await RedisManager.initialize(settings)
-        redis = await RedisManager.get_redis()
-        yield redis
-    finally:
-        await RedisManager.close()
 
 async def get_item_service(db=Depends(get_db)) -> ItemService:
     """Get ItemService instance."""

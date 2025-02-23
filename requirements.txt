@@ -1,0 +1,23 @@
+flask>=2.0.0
+flask-cors>=3.0.0
+flask-graphql>=2.0.0
+flask-jwt-extended>=4.0.0
+neo4j>=5.0.0
+psutil>=5.9.0
+python-dotenv>=0.19.0
+
+# Development dependencies
+pytest>=7.0.0
+pytest-asyncio>=0.16.0
+pytest-cov>=2.12.0
+mypy>=0.910
+black>=22.3.0
+flake8>=3.9.0
+isort>=5.9.0
+
+# Type stubs
+types-flask>=1.1.0
+types-flask-cors>=3.0.0
+types-neo4j>=5.0.0
+types-psutil>=5.9.0
+types-python-dotenv>=0.19.0

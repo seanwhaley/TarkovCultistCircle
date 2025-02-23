@@ -6,14 +6,12 @@ import uuid
 
 import structlog
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.jobstores.redis import RedisJobStore
 from apscheduler.triggers.cron import CronTrigger
-from apscheduler.triggers.interval import IntervalTrigger
-from redis.asyncio import Redis
 
 from src.core.config import Settings
 from src.core.tasks import TaskManager
 from src.core.exceptions import AppException
+from src.core.database import DatabaseManager
 
 logger = structlog.get_logger(__name__)
 
@@ -23,21 +21,37 @@ class SchedulerManager:
     def __init__(
         self,
         settings: Settings,
-        redis: Redis,
         task_manager: TaskManager
     ):
         self.settings = settings
-        self.redis = redis
         self.task_manager = task_manager
         self.scheduler = AsyncIOScheduler()
-        
-        # Configure job stores
-        self.scheduler.add_jobstore(
-            'redis',
-            jobs_key='scheduled_jobs',
-            run_times_key='job_runs',
-            client=redis
+        self._setup_jobs()
+
+    def _setup_jobs(self) -> None:
+        """Setup scheduled jobs."""
+        # Run database maintenance at 3 AM daily
+        self.scheduler.add_job(
+            self._database_maintenance,
+            CronTrigger(hour=3),
+            name='database_maintenance'
         )
+
+    async def _database_maintenance(self) -> None:
+        """Run database maintenance tasks."""
+        try:
+            async with DatabaseManager.session() as session:
+                # Run Neo4j maintenance queries
+                await session.run("CALL db.stats()")
+                await session.run("CALL db.indexes()")
+                await session.run("CALL db.constraints()")
+                # Execute query plan analysis
+                await session.run("CALL db.queryPlan('MATCH (n) RETURN n LIMIT 1')")
+                # Clear query plan cache for potentially stale plans
+                await session.run("CALL db.clearQueryCaches()")
+            logger.info("Database maintenance completed")
+        except Exception as e:
+            logger.error(f"Database maintenance failed: {str(e)}")
 
     async def start(self) -> None:
         """Start the scheduler."""

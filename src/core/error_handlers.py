@@ -1,47 +1,57 @@
+"""Error handlers for database and application errors."""
 import logging
 from flask import jsonify, render_template, request
 from werkzeug.exceptions import HTTPException
-from src.services.exceptions import (
-    ItemServiceError,
-    ValidationError,
-    DatabaseError,
-    ItemNotFoundError
-)
+from src.database.exceptions import DatabaseError, ConnectionError, QueryError, ValidationError
 
-logger = logging.getLogger('tarkov_cultist.error')
+logger = logging.getLogger(__name__)
 
 def register_error_handlers(app):
+    """Register error handlers for the application."""
+    
     @app.errorhandler(ValidationError)
     def handle_validation_error(error):
-        logger.warning('Validation error', extra={'error': str(error)})
-        if request.is_json or request.headers.get('Accept') == 'application/json':
-            return jsonify({'error': 'Validation error', 'message': str(error)}), 400
-        return render_template('errors/400.html', error=error), 400
-
+        """Handle database validation errors."""
+        logger.warning(f'Validation error: {str(error)}')
+        if request.is_json:
+            return jsonify({'error': 'Validation error', 'details': error.details}), 400
+        return render_template('errors/400.html', error=str(error)), 400
+    
+    @app.errorhandler(ConnectionError)
+    def handle_connection_error(error):
+        """Handle database connection errors."""
+        logger.error(f'Database connection error: {str(error)}')
+        if request.is_json:
+            return jsonify({'error': 'Service unavailable', 'message': str(error)}), 503
+        return render_template('errors/503.html'), 503
+    
+    @app.errorhandler(QueryError)
+    def handle_query_error(error):
+        """Handle database query errors."""
+        logger.error(f'Database query error: {str(error)}')
+        if request.is_json:
+            return jsonify({'error': 'Database error', 'message': str(error)}), 500
+        return render_template('errors/500.html'), 500
+    
     @app.errorhandler(DatabaseError)
     def handle_database_error(error):
-        logger.error('Database error', extra={'error': str(error)})
-        if request.is_json or request.headers.get('Accept') == 'application/json':
-            return jsonify({'error': 'Database error', 'message': 'Internal server error'}), 500
+        """Handle generic database errors."""
+        logger.error(f'Database error: {str(error)}')
+        if request.is_json:
+            return jsonify({'error': 'Database error', 'message': 'An unexpected database error occurred'}), 500
         return render_template('errors/500.html'), 500
-
-    @app.errorhandler(ItemNotFoundError)
-    def handle_not_found_error(error):
-        logger.info('Item not found', extra={'error': str(error)})
-        if request.is_json or request.headers.get('Accept') == 'application/json':
-            return jsonify({'error': 'Not found', 'message': str(error)}), 404
-        return render_template('errors/404.html', error=error), 404
-
-    @app.errorhandler(HTTPException)
-    def handle_http_error(error):
-        logger.warning(f'HTTP error: {error.code}', extra={'error': str(error)})
-        if request.is_json or request.headers.get('Accept') == 'application/json':
-            return jsonify({'error': error.name, 'message': error.description}), error.code
-        return render_template(f'errors/{error.code}.html', error=error), error.code
-
+    
+    @app.errorhandler(404)
+    def handle_not_found(error):
+        """Handle 404 errors."""
+        if request.is_json:
+            return jsonify({'error': 'Not found'}), 404
+        return render_template('errors/404.html'), 404
+    
     @app.errorhandler(Exception)
     def handle_exception(error):
+        """Handle any unhandled exceptions."""
         logger.exception('Unhandled exception')
-        if request.is_json or request.headers.get('Accept') == 'application/json':
-            return jsonify({'error': 'Internal server error', 'message': 'An unexpected error occurred'}), 500
+        if request.is_json:
+            return jsonify({'error': 'Internal server error'}), 500
         return render_template('errors/500.html'), 500

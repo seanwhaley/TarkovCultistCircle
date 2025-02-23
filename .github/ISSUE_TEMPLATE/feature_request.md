@@ -1,37 +1,35 @@
 ---
 name: Feature Request
-about: Suggest a new feature for this project
+about: Suggest a new feature or enhancement
 title: '[FEATURE] '
-labels: enhancement
+labels: enhancement, ai-ready
 assignees: ''
-
 ---
 
-## Business Context
-**As a** [user type]
-**I want** [goal/desire]
-**So that** [benefit]
+### Feature: [Name]
 
-## Technical Requirements
-- [ ] Required technologies/frameworks
-- [ ] Integration points
-- [ ] Performance requirements
-- [ ] Security considerations
+**Business Context:**
+[Describe the business need or user story]
 
-## Acceptance Criteria
-- [ ] Specific, measurable outcome 1
-- [ ] Specific, measurable outcome 2
-- [ ] Edge cases to handle
-- [ ] Error scenarios to consider
+**Current Implementation:**
+- Location: [Relevant files/modules]
+- Pattern: [Current implementation pattern]
+- Related Components: [List related components]
 
-## Implementation Notes
-- Relevant existing components:
-- Suggested implementation approach:
-- Database changes needed:
-- API endpoints affected:
+**Technical Requirements:**
+- [ ] Requirement 1
+- [ ] Requirement 2
 
-## Additional Context
-Add any other context or screenshots about the feature request here.
+**Required Changes:**
+1. [Specific change with technical details]
+2. [Next change...]
 
-## Dependencies
-- List any dependencies or related issues
+**Validation:**
+- [ ] Test cases
+- [ ] Expected behavior
+- [ ] Error scenarios
+
+**Dependencies:**
+- Related issues: #
+- Required before: #
+- Blocks: #

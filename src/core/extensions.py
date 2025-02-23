@@ -1,22 +1,18 @@
-"""Flask extensions initialization."""
+"""Essential Flask extensions initialization."""
 from typing import Any
 from flask import Flask
-from flask_limiter import Limiter
-from flask_caching import Cache
 from flask_login import LoginManager
 
-limiter = Limiter()
-cache = Cache()
+# Initialize login manager
 login_manager = LoginManager()
 
 def init_extensions(app: Flask) -> None:
     """Initialize Flask extensions."""
-    cache.init_app(app)
-    limiter.init_app(app)
-    
+    # Configure and initialize login manager with secure defaults
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
     login_manager.login_message_category = 'info'
+    login_manager.session_protection = 'strong'
     
     from src.models.user import User
     

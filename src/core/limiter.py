@@ -1,122 +1,47 @@
-"""Enhanced rate limiting with Starlette."""
-from typing import Callable, Dict, Optional, Union
+"""Simple in-memory rate limiting."""
 from datetime import datetime, timedelta
-import asyncio
+import threading
+from typing import Dict, Tuple
 from collections import defaultdict
-from dataclasses import dataclass
-import structlog
-from starlette.requests import Request
-from starlette.responses import Response
-
-from src.core.logging import get_logger
-
-logger = get_logger(__name__)
-
-@dataclass
-class RateLimit:
-    """Rate limit configuration."""
-    calls: int
-    period: int  # in seconds
-    key_func: Optional[Callable] = None
+from fastapi import Request
 
 class RateLimiter:
-    """Advanced rate limiter with multiple limit types."""
+    """Thread-safe in-memory rate limiter with simplified implementation."""
     
     def __init__(self):
-        self.requests: Dict[str, list] = defaultdict(list)
-        self._cleanup_task = None
-
-    async def start(self):
-        """Start cleanup task."""
-        self._cleanup_task = asyncio.create_task(self._cleanup_loop())
-
-    async def stop(self):
-        """Stop cleanup task."""
-        if self._cleanup_task:
-            self._cleanup_task.cancel()
-            try:
-                await self._cleanup_task
-            except asyncio.CancelledError:
-                pass
-
-    async def _cleanup_loop(self):
-        """Periodically clean up old request records."""
-        while True:
-            try:
-                now = datetime.utcnow()
-                for key in list(self.requests.keys()):
-                    self.requests[key] = [
-                        ts for ts in self.requests[key]
-                        if now - ts < timedelta(hours=1)
-                    ]
-                    if not self.requests[key]:
-                        del self.requests[key]
-                await asyncio.sleep(60)
-            except asyncio.CancelledError:
-                break
-            except Exception:
-                logger.exception("Rate limiter cleanup error")
-                await asyncio.sleep(60)
-
-    def _get_key(self, request: Request, key_func: Optional[Callable] = None) -> str:
-        """Get rate limit key for request."""
-        if key_func:
-            return key_func(request)
-        return f"{request.client.host}"
-
-    async def is_rate_limited(
-        self, 
-        request: Request,
-        limit: Union[RateLimit, Dict[str, RateLimit]]
-    ) -> Optional[Response]:
-        """Check if request is rate limited."""
-        if isinstance(limit, dict):
-            # Check multiple rate limits
-            for limit_type, rate_limit in limit.items():
-                key = f"{self._get_key(request, rate_limit.key_func)}:{limit_type}"
-                if response := await self._check_limit(request, key, rate_limit):
-                    return response
-            return None
-        else:
-            # Single rate limit
-            key = self._get_key(request, limit.key_func)
-            return await self._check_limit(request, key, limit)
-
-    async def _check_limit(
-        self,
-        request: Request,
-        key: str,
-        limit: RateLimit
-    ) -> Optional[Response]:
-        """Check single rate limit."""
-        now = datetime.utcnow()
-        requests = self.requests[key]
+        self.requests = defaultdict(list)
+        self.lock = threading.Lock()
         
-        # Remove old requests
-        window_start = now - timedelta(seconds=limit.period)
-        requests = [ts for ts in requests if ts > window_start]
-        
-        if len(requests) >= limit.calls:
-            reset_time = min(requests) + timedelta(seconds=limit.period)
-            reset_seconds = int((reset_time - now).total_seconds())
+    def is_rate_limited(self, request: Request) -> Tuple[bool, Dict]:
+        """Simple rate check - 1000 requests per hour per IP."""
+        if request.url.path.startswith(("/docs", "/openapi.json")):
+            return False, {}
             
-            logger.warning("Rate limit exceeded", 
-                         key=key,
-                         limit=limit.calls,
-                         period=limit.period,
-                         reset_in=reset_seconds)
+        client_ip = request.client.host
+        with self.lock:
+            now = datetime.utcnow()
+            cutoff = now - timedelta(hours=1)
             
-            return Response(
-                status_code=429,
-                content={"error": "Too many requests"},
-                headers={
-                    "X-RateLimit-Limit": str(limit.calls),
-                    "X-RateLimit-Remaining": "0",
-                    "X-RateLimit-Reset": str(reset_seconds)
+            # Clean old requests
+            self.requests[client_ip] = [ts for ts in self.requests[client_ip] if ts > cutoff]
+            current_count = len(self.requests[client_ip])
+            
+            # Check if limit exceeded
+            if current_count >= 1000:
+                reset_time = (min(self.requests[client_ip]) + timedelta(hours=1) - now).total_seconds()
+                return True, {
+                    "limit": 1000,
+                    "remaining": 0,
+                    "reset": int(reset_time)
                 }
-            )
-        
-        self.requests[key] = requests + [now]
-        return None
+            
+            # Add new request
+            self.requests[client_ip].append(now)
+            return False, {
+                "limit": 1000,
+                "remaining": 1000 - (current_count + 1),
+                "reset": 3600
+            }
 
+# Global instance
 rate_limiter = RateLimiter()

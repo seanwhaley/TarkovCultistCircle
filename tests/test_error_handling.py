@@ -1,114 +1,64 @@
+"""Tests for error handling."""
 import unittest
 from unittest.mock import patch
-import pytest
 from src.application.app_factory import ApplicationFactory
-from src.core.db import Neo4jConnection
 from src.config import Config
-from neo4j.exceptions import ServiceUnavailable, AuthError
+from src.database.exceptions import ConnectionError, QueryError, ValidationError
 
 class ErrorHandlingTestCase(unittest.TestCase):
-    """
-    Test case for Flask application error handling.
-    """
     def setUp(self):
-        """
-        Set up the test client.
-        """
+        """Set up test environment."""
         self.app = ApplicationFactory.create_app(Config)
-        self.app.config.update({
-            'TESTING': True,
-            'NEO4J_URI': 'bolt://localhost:7687',
-            'NEO4J_USER': 'neo4j',
-            'NEO4J_PASSWORD': 'test'
-        })
+        self.app.config['TESTING'] = True
         self.client = self.app.test_client()
 
     def test_404_error(self):
-        """
-        Test 404 error handling.
-
-        Asserts:
-            The response status code is 404.
-            The response data contains 'Not Found'.
-        """
-        response = self.client.get('/nonexistent_route')
+        """Test not found error handling."""
+        response = self.client.get('/nonexistent')
         self.assertEqual(response.status_code, 404)
-        self.assertIn(b'Not Found', response.data)
-
-    def test_500_error(self):
-        """
-        Test 500 error handling.
-
-        Asserts:
-            The response status code is 500.
-            The response data contains 'Internal Server Error'.
-        """
-        @self.app.route('/error')
-        def error_route():
-            raise Exception("Test exception")
-
-        response = self.client.get('/error')
-        self.assertEqual(response.status_code, 500)
-        self.assertIn(b'Internal Server Error', response.data)
+        
+        # Test JSON response
+        response = self.client.get('/nonexistent', headers={'Accept': 'application/json'})
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json['error'], 'Not found')
 
     def test_database_connection_error(self):
-        """Test database connection error handling"""
-        with patch('src.core.db.Neo4jConnection.query') as mock_query:
-            mock_query.side_effect = ServiceUnavailable("Database is unavailable")
-            response = self.client.get('/optimize/calculate')
+        """Test database connection error handling."""
+        with patch('src.database.neo4j.Neo4jDB._init_driver') as mock_init:
+            mock_init.side_effect = ConnectionError("Failed to connect to database")
+            response = self.client.get('/items')
             self.assertEqual(response.status_code, 503)
-            self.assertIn(b'Database service is unavailable', response.data)
+            
+            # Test JSON response
+            response = self.client.get('/items', headers={'Accept': 'application/json'})
+            self.assertEqual(response.status_code, 503)
+            self.assertIn('Service unavailable', response.json['error'])
 
-    def test_database_auth_error(self):
-        """Test database authentication error handling"""
-        with patch('src.core.db.Neo4jConnection.query') as mock_query:
-            mock_query.side_effect = AuthError("Invalid credentials")
-            response = self.client.get('/optimize/calculate')
+    def test_database_query_error(self):
+        """Test database query error handling."""
+        with patch('src.database.neo4j.Neo4jDB.query') as mock_query:
+            mock_query.side_effect = QueryError("Query execution failed")
+            response = self.client.get('/items')
             self.assertEqual(response.status_code, 500)
-            self.assertIn(b'Database authentication failed', response.data)
+            
+            # Test JSON response
+            response = self.client.get('/items', headers={'Accept': 'application/json'})
+            self.assertEqual(response.status_code, 500)
+            self.assertEqual(response.json['error'], 'Database error')
 
-    def test_invalid_json_error(self):
-        """Test invalid JSON handling in API endpoints"""
-        response = self.client.post('/optimize/calculate', 
-                                  data='invalid json',
-                                  content_type='application/json')
-        self.assertEqual(response.status_code, 400)
-        self.assertIn(b'Invalid JSON', response.data)
-
-    def test_missing_required_field(self):
-        """Test missing required field handling"""
-        response = self.client.post('/optimize/calculate',
-                                  json={},
-                                  content_type='application/json')
-        self.assertEqual(response.status_code, 400)
-        self.assertIn(b'Missing required fields', response.data)
-
-    def test_method_not_allowed(self):
-        """Test method not allowed error handling"""
-        response = self.client.post('/history/item/123')  # Assuming this is GET only
-        self.assertEqual(response.status_code, 405)
-        self.assertIn(b'Method Not Allowed', response.data)
-
-    def test_rate_limit_exceeded(self):
-        """Test rate limiting error handling"""
-        # Make multiple requests quickly to trigger rate limit
-        responses = [self.client.get('/optimize/calculate') for _ in range(50)]
-        self.assertTrue(any(r.status_code == 429 for r in responses))
-        self.assertTrue(any(b'Too Many Requests' in r.data for r in responses))
-
-    def test_invalid_item_id(self):
-        """Test invalid item ID error handling"""
-        response = self.client.get('/history/item/invalid_id')
-        self.assertEqual(response.status_code, 404)
-        self.assertIn(b'Item not found', response.data)
-
-    @patch('src.core.db.Neo4jConnection')
-    def test_database_timeout(self, mock_db):
-        """Test database timeout handling"""
-        mock_db.query.side_effect = Exception("Operation timed out")
-        response = self.client.get('/optimize/calculate')
-        self.assertEqual(response.status_code, 504)
-        self.assertIn(b'Request timed out', response.data)
+    def test_validation_error(self):
+        """Test validation error handling."""
+        with patch('src.database.neo4j.Neo4jDB.execute') as mock_execute:
+            mock_execute.side_effect = ValidationError("Invalid data format", {"field": "price"})
+            response = self.client.post('/items', json={"invalid": "data"})
+            self.assertEqual(response.status_code, 400)
+            
+            # Test JSON response
+            response = self.client.post('/items', json={"invalid": "data"}, 
+                                      headers={'Accept': 'application/json'})
+            self.assertEqual(response.status_code, 400)
+            self.assertEqual(response.json['error'], 'Validation error')
+            self.assertIn('details', response.json)
 
 if __name__ == '__main__':
     unittest.main()

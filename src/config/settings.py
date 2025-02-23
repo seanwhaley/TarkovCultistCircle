@@ -1,7 +1,6 @@
 """Application settings and configuration."""
 
 import os
-from typing import Dict, Any
 from dataclasses import dataclass
 from dotenv import load_dotenv
 
@@ -45,13 +44,3 @@ class Settings:
     debug: bool = os.getenv('DEBUG', 'False').lower() == 'true'
     secret_key: str = os.getenv('SECRET_KEY', 'default-secret-key')
     env: str = os.getenv('FLASK_ENV', 'development')
-    
-    @property
-    def config(self) -> Dict[str, Any]:
-        """Get the config object for the current environment."""
-        configs = {
-            'development': DevelopmentConfig,
-            'testing': TestingConfig,
-            'production': ProductionConfig
-        }
-        return configs.get(self.env, DevelopmentConfig)()

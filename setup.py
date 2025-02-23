@@ -13,6 +13,7 @@ setup(
         "flask-graphql",
         "flask-jwt-extended",
         "neo4j",
+        "psutil>=5.9.0",
         "python-dotenv",
     ],
     python_requires=">=3.8",

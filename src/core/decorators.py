@@ -1,35 +1,27 @@
+"""Essential decorators for database operations and basic validation."""
 from functools import wraps
-from typing import Callable, TypeVar, Any, List, cast
-from flask import current_app, request, jsonify
-from src.types.responses import ErrorResponse, ResponseType
+from typing import Any, Callable, Dict, Type
 
-F = TypeVar('F', bound=Callable[..., Any])
-
-def db_transaction(f: F) -> F:
-    """Decorator to handle database transactions."""
+def db_transaction(f: Callable) -> Callable:
+    """Simple database transaction decorator."""
     @wraps(f)
     def decorated_function(*args: Any, **kwargs: Any) -> Any:
-        try:
-            result = f(*args, **kwargs)
-            return result
-        except Exception as e:
-            current_app.logger.error(f"Transaction error: {str(e)}")
-            raise
+        db = kwargs.get('db')
+        if not db:
+            raise ValueError("Database connection required")
+            
+        with db.transaction():
+            return f(*args, **kwargs)
     return decorated_function
 
-F = TypeVar('F', bound=Callable[..., ResponseType])
-
-def validate_form_data(required_fields: List[str]) -> Callable[[F], F]:
-    def decorator(f: F) -> F:
+def validate_form_data(schema: Dict[str, Type]) -> Callable:
+    """Basic type validation for form data."""
+    def decorator(f: Callable) -> Callable:
         @wraps(f)
-        def decorated_function(*args: Any, **kwargs: Any) -> ResponseType:
-            missing = [field for field in required_fields if not request.form.get(field)]
-            if missing:
-                error: ErrorResponse = {
-                    "error": "Missing required fields",
-                    "details": {"missing": missing}
-                }
-                return jsonify(error), 400
-            return f(*args, **kwargs)
-        return cast(F, decorated_function)
+        def decorated_function(data: Dict, *args: Any, **kwargs: Any) -> Any:
+            for field, field_type in schema.items():
+                if field in data and not isinstance(data[field], field_type):
+                    raise ValueError(f"Invalid type for {field}")
+            return f(data, *args, **kwargs)
+        return decorated_function
     return decorator

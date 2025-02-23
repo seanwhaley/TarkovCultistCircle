@@ -5,6 +5,7 @@ import pytest
 from src.application.app_factory import ApplicationFactory
 from src.core.db import Neo4jConnection
 from src.config import Config
+from src.services.market import MarketService
 
 @pytest.fixture
 def app():
@@ -34,42 +35,39 @@ def db(app):
 
 @pytest.fixture
 def sample_market_data(db):
-    # Create sample market data
-    db.query("""
-        CREATE (i:Item {
-            id: 'test_item',
-            name: 'Test Item',
-            basePrice: 1000,
-            lastLowPrice: 900,
-            avg24hPrice: 950,
-            updated: $timestamp
-        })
-        WITH i
-        UNWIND [
-            {price: 1000, timestamp: $timestamp1},
-            {price: 1100, timestamp: $timestamp2},
-            {price: 1200, timestamp: $timestamp3}
-        ] as data
-        CREATE (p:PricePoint {price: data.price, timestamp: data.timestamp})
-        CREATE (i)-[:HAS_PRICE_HISTORY]->(p)
-    """, parameters={
-        'timestamp': datetime.utcnow().isoformat(),
-        'timestamp1': (datetime.utcnow() - timedelta(days=2)).isoformat(),
-        'timestamp2': (datetime.utcnow() - timedelta(days=1)).isoformat(),
-        'timestamp3': datetime.utcnow().isoformat()
-    })
-    return 'test_item'
+    """Create sample market data for tests."""
+    test_data = [
+        {
+            "item_id": "item1",
+            "price": 1500,
+            "timestamp": datetime.utcnow()
+        },
+        {
+            "item_id": "item2",
+            "price": 2500,
+            "timestamp": datetime.utcnow() - timedelta(hours=1)
+        }
+    ]
+    
+    # Insert test market data
+    for data in test_data:
+        db.query(
+            """
+            MATCH (i:Item {uid: $item_id})
+            CREATE (p:Price {value: $price, timestamp: $timestamp})
+            CREATE (i)-[:HAS_PRICE]->(p)
+            """,
+            parameters=data
+        )
+    return test_data
 
 class TestMarket(unittest.TestCase):
-    def setUp(self):
-        self.app = ApplicationFactory.create_app(Config)
-        self.app.config.update({
-            'TESTING': True,
-            'WTF_CSRF_ENABLED': False,
-            'NEO4J_URI': 'bolt://localhost:7687',
-            'NEO4J_USER': 'neo4j',
-            'NEO4J_PASSWORD': 'test'
-        })
+    @pytest.fixture(autouse=True)
+    def setup(self, app, db, sample_market_data):
+        self.app = app
+        self.db = db
+        self.market_data = sample_market_data
+        self.market = MarketService(self.db)
         self.client = self.app.test_client()
         self.app_context = self.app.app_context()
         self.app_context.push()

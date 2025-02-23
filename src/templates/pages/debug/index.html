@@ -2,25 +2,188 @@
 
 {% block title %}Debug Dashboard - {{ super() }}{% endblock %}
 
+{% block styles %}
+<style>
+.health-status {
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+}
+.health-status.healthy { background-color: #28a745; color: white; }
+.health-status.warning { background-color: #ffc107; color: black; }
+.health-status.unhealthy { background-color: #dc3545; color: white; }
+.health-status.unknown { background-color: #6c757d; color: white; }
+
+.metrics-card {
+    background-color: var(--card-background);
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="debug-container">
     <h1>Debug Dashboard</h1>
     
-    <div class="debug-info">
-        <h2>System Information</h2>
-        <ul>
-            {% for key, value in info.items() %}
-            <li><strong>{{ key }}:</strong> {{ value }}</li>
-            {% endfor %}
-        </ul>
-    </div>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="debug-info card">
+                <div class="card-header">
+                    <h2>System Information</h2>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        {% for key, value in info.items() %}
+                        <li><strong>{{ key }}:</strong> {{ value }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
 
-    <div class="debug-links">
-        <h2>Debug Tools</h2>
-        <ul>
-            <li><a href="{{ url_for('debug.debug_config') }}">View Configuration</a></li>
-            <li><a href="{{ url_for('debug.debug_routes') }}">View Routes</a></li>
-        </ul>
+            <div class="debug-links card mt-4">
+                <div class="card-header">
+                    <h2>Debug Tools</h2>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        <a href="{{ url_for('debug.debug_config') }}" class="list-group-item list-group-item-action">
+                            <i class="material-icons">settings</i> View Configuration
+                        </a>
+                        <a href="{{ url_for('debug.debug_routes') }}" class="list-group-item list-group-item-action">
+                            <i class="material-icons">route</i> View Routes
+                        </a>
+                        <a href="{{ url_for('debug.environment') }}" class="list-group-item list-group-item-action">
+                            <i class="material-icons">computer</i> View Environment
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="health-monitor card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2>Health Status</h2>
+                    <button class="btn btn-sm btn-primary" onclick="refreshHealth()">
+                        <i class="material-icons">refresh</i>
+                    </button>
+                </div>
+                <div class="card-body" id="healthStatus">
+                    Loading...
+                </div>
+            </div>
+
+            <div class="metrics-monitor card mt-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2>System Metrics</h2>
+                    <button class="btn btn-sm btn-primary" onclick="refreshMetrics()">
+                        <i class="material-icons">refresh</i>
+                    </button>
+                </div>
+                <div class="card-body" id="metricsData">
+                    Loading...
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function refreshHealth() {
+    try {
+        const response = await fetch("{{ url_for('debug.system_health') }}");
+        const data = await response.json();
+        
+        const healthHtml = `
+            <div class="health-status ${data.status}">
+                Overall Status: ${data.status.toUpperCase()}
+            </div>
+            <div class="components">
+                <h5>Components:</h5>
+                <div class="metrics-card">
+                    <h6>Database</h6>
+                    <div class="health-status ${data.components.database.status}">
+                        ${data.components.database.message}
+                    </div>
+                </div>
+                <div class="metrics-card">
+                    <h6>System</h6>
+                    <div class="health-status ${data.components.system.memory.status}">
+                        Memory: ${data.components.system.memory.message}
+                    </div>
+                    <div class="health-status ${data.components.system.disk.status}">
+                        Disk: ${data.components.system.disk.message}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('healthStatus').innerHTML = healthHtml;
+    } catch (error) {
+        document.getElementById('healthStatus').innerHTML = `
+            <div class="alert alert-danger">
+                Error fetching health status: ${error.message}
+            </div>
+        `;
+    }
+}
+
+async function refreshMetrics() {
+    try {
+        const response = await fetch("{{ url_for('debug.system_metrics') }}");
+        const data = await response.json();
+        
+        const requestStats = data.requests;
+        const performanceStats = data.performance;
+        
+        const metricsHtml = `
+            <div class="metrics-card">
+                <h5>Request Statistics (Last 5 minutes)</h5>
+                <ul class="list-unstyled">
+                    ${Object.entries(requestStats).map(([path, stats]) => `
+                        <li>
+                            <strong>${path}</strong>
+                            <ul>
+                                ${Object.entries(stats).map(([method, count]) => `
+                                    <li>${method}: ${count} requests</li>
+                                `).join('')}
+                            </ul>
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
+            <div class="metrics-card">
+                <h5>Performance Statistics (Last 5 minutes)</h5>
+                <ul class="list-unstyled">
+                    ${Object.entries(performanceStats).map(([metric, value]) => `
+                        <li><strong>${metric}:</strong> ${value}</li>
+                    `).join('')}
+                </ul>
+            </div>
+        `;
+        
+        document.getElementById('metricsData').innerHTML = metricsHtml;
+    } catch (error) {
+        document.getElementById('metricsData').innerHTML = `
+            <div class="alert alert-danger">
+                Error fetching metrics: ${error.message}
+            </div>
+        `;
+    }
+}
+
+// Initial load
+refreshHealth();
+refreshMetrics();
+
+// Auto-refresh every 60 seconds
+setInterval(() => {
+    refreshHealth();
+    refreshMetrics();
+}, 60000);
+</script>
 {% endblock %}

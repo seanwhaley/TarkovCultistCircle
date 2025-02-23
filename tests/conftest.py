@@ -1,21 +1,48 @@
+"""Shared test configuration and fixtures."""
 import pytest
-from src.app import app, get_db
+from src.application.app_factory import ApplicationFactory
+from src.core.db import Neo4jConnection
+from src.config import Config
 
 @pytest.fixture
-def client():
-    app.config['TESTING'] = True
-    app.config['NEO4J_URI'] = 'bolt://localhost:7687'  # Use localhost for tests
+def app():
+    """Create application for testing."""
+    app = ApplicationFactory.create_app(Config)
+    app.config.update({
+        'TESTING': True,
+        'NEO4J_URI': 'bolt://localhost:7687',
+        'NEO4J_USER': 'neo4j',
+        'NEO4J_PASSWORD': 'test',
+        'RATE_LIMIT_ENABLED': False,
+        'RATELIMIT_STORAGE_URL': 'memory://',
+        'RATELIMIT_STRATEGY': 'fixed-window'
+    })
+    return app
+
+@pytest.fixture
+def client(app):
+    """Create test client."""
     with app.test_client() as client:
         yield client
 
 @pytest.fixture
-def db():
-    db = get_db()
+def db(app):
+    """Create database connection for testing."""
+    db = Neo4jConnection(
+        uri=app.config['NEO4J_URI'],
+        user=app.config['NEO4J_USER'],
+        password=app.config['NEO4J_PASSWORD']
+    )
+    # Clear test data before each test
+    db.query("MATCH (n) DETACH DELETE n")
     yield db
+    # Clean up after tests
+    db.query("MATCH (n) DETACH DELETE n")
     db.close()
 
 @pytest.fixture
 def sample_items():
+    """Sample item data for testing."""
     return [
         {
             "uid": "item1",

@@ -1,41 +1,41 @@
 ---
 name: Bug Report
-about: Create a report to help us improve
+about: Report a bug or issue
 title: '[BUG] '
-labels: bug
+labels: bug, ai-ready
 assignees: ''
-
 ---
 
-## Bug Description
-A clear and concise description of the bug.
+### Bug Description
+[Clear and concise description of the bug]
 
-## Steps to Reproduce
+**Reproduction Steps:**
 1. Go to '...'
 2. Click on '....'
-3. Scroll down to '....'
-4. See error
+3. See error
 
-## Expected Behavior
-A clear and concise description of what you expected to happen.
+**Expected Behavior:**
+[What should happen]
 
-## Actual Behavior
-What actually happened, including any error messages or screenshots.
+**Current Behavior:**
+[What actually happens]
 
-## Technical Details
-- Python Version:
-- Neo4j Version:
-- Browser (if applicable):
-- OS:
-- Docker Version (if applicable):
+**Technical Context:**
+- File(s): [Affected files]
+- Function/Component: [Specific location]
+- Related Issues: #
 
-## Logs
+**Environment:**
+- Browser/Client: [e.g. Chrome 91]
+- OS: [e.g. Windows 10]
+- Application Version: [e.g. 1.0.0]
+
+**Error Details:**
 ```
-Relevant log output or error messages
+[Error logs, stack traces, etc.]
 ```
 
-## Additional Context
-Any other context about the problem.
-
-## Possible Solution
-If you have suggestions on how to fix the issue.
+**Additional Context:**
+- Implementation notes
+- Related components
+- Potential causes

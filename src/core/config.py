@@ -18,22 +18,19 @@ class Settings(BaseSettings):
     NEO4J_PASSWORD: str
     NEO4J_MAX_POOL_SIZE: int = 50
     
-    # Redis settings
-    REDIS_URL: str = "redis://redis:6379/0"
-    
     # API settings
     API_V1_PREFIX: str = "/api/v1"
-    API_RATE_LIMIT: int = 1000
-    API_REFRESH_LIMIT: int = 20
+    API_RATE_LIMIT: int = 1000  # Requests per hour
+    API_REFRESH_LIMIT: int = 20  # Market data refreshes per hour
     
     # Auth settings
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     ADMIN_PASSWORD_HASH: str
-    AUTH_REGISTER_LIMIT: int = 3
     
-    # Feature flags
-    ENABLE_GRAPHQL: bool = True
-    ENABLE_DEBUG_ROUTES: bool = False
+    # Rate limiting settings
+    RATELIMIT_STORAGE_URL: str = "memory://"
+    RATELIMIT_STRATEGY: str = "fixed-window"
+    RATELIMIT_DEFAULT: str = "1000 per hour"
     
     class Config:
         env_file = ".env"

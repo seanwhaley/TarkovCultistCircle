@@ -161,11 +161,3 @@ class SecureSettings:
             f"bolt://{self.get('NEO4J_USER')}:{self.get('NEO4J_PASSWORD')}"
             f"@{self.get('NEO4J_HOST', 'localhost')}:{self.get('NEO4J_PORT', '7687')}"
         )
-
-    def get_redis_url(self) -> str:
-        """Get Redis connection URL with credentials."""
-        return (
-            f"redis://:{self.get('REDIS_PASSWORD', '')}@"
-            f"{self.get('REDIS_HOST', 'localhost')}:{self.get('REDIS_PORT', '6379')}"
-            f"/{self.get('REDIS_DB', '0')}"
-        )

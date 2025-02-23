@@ -1,5 +1,11 @@
 # Neo4j Database Structure
 
+## Core Design Principles
+- Optimized for graph traversal
+- Efficient relationship querying
+- Built-in caching mechanisms
+- Scalable indexing strategy
+
 ## Core Node Types
 
 ### Item
@@ -259,18 +265,10 @@ RETURN i, c, a, m, w,
 
 ### Query Optimization
 
-1. Use PROFILE and EXPLAIN for query analysis
-```cypher
-PROFILE MATCH (i:Item)-[:IN_CATEGORY]->(:Category {name: 'Weapon'})
-RETURN i.name, i.basePrice
-ORDER BY i.basePrice DESC
-LIMIT 10
-```
-
-2. Avoid cartesian products in queries
-3. Use OPTIONAL MATCH for nullable relationships
-4. Leverage parameter types for better query planning
-5. Use UNWIND for batch operations
+1. Use EXPLAIN and PROFILE for query plans
+2. Leverage parameter types for better plan caching
+3. Use MATCH patterns that utilize indexes
+4. Minimize relationship traversal depth
 
 ### Indexing Strategies
 
@@ -292,80 +290,31 @@ YIELD hitCount, missCount
 RETURN hitCount, missCount
 ```
 
-### Caching Layer
+### Neo4j Query Caching
 
-1. Result Cache Configuration
-```yaml
-dbms.memory.pagecache.size=4G
-dbms.memory.off_heap.max_size=4G
+1. Query Plan Cache Configuration
+```properties
+# Neo4j query plan cache settings
+dbms.query_cache_size=1000
+dbms.track_query_cpu_time=true
+dbms.track_query_allocation=true
 ```
 
-2. Query Plan Cache
+2. Query Result Cache
+- Neo4j Enterprise Edition provides built-in query result caching
+- Configure cache size based on available memory
+- Monitor cache hit rates and adjust settings
+
+3. Cache Management
 ```cypher
 // Clear query cache if needed
 CALL db.clearQueryCaches()
+
+// View current query cache statistics
+CALL db.stats.retrieve('QUERY CACHE')
 ```
 
 ### Database Maintenance
-
-1. Regular Cleanup Tasks
-```cypher
-// Remove orphaned nodes
-MATCH (n)
-WHERE NOT (n)--()
-DELETE n
-```
-
-2. Database Statistics
-```cypher
-CALL apoc.meta.stats()
-YIELD nodeCount, relCount, labels, relTypes
-```
-
-3. Periodic Index Maintenance
-```cypher
-CALL db.indexes() YIELD name, type, state
-WHERE state <> 'ONLINE'
-RETURN name, type, state
-```
-
-### Bulk Operations
-
-1. Batch Processing
-```cypher
-CALL apoc.periodic.iterate(
-    "MATCH (i:Item) RETURN i",
-    "SET i.lastUpdated = timestamp()",
-    {batchSize: 1000}
-)
-```
-
-2. Memory-Efficient Updates
-```cypher
-USING PERIODIC COMMIT 500
-LOAD CSV FROM 'file:///items.csv' AS row
-MERGE (i:Item {id: row[0]})
-ON CREATE SET i += {
-    name: row[1],
-    price: toInteger(row[2])
-}
-```
-
-### Monitoring and Metrics
-
-1. Query Runtime Metrics
-```cypher
-CALL apoc.monitor.kernel()
-YIELD kernelStartTime, bytesRead, bytesWritten
-```
-
-2. Connection Pool Status
-```cypher
-CALL dbms.pool.status()
-YIELD name, allocated, inUse
-```
-
-### Best Practices for Production
 
 1. Memory Configuration
 ```properties
@@ -387,30 +336,19 @@ SET h.lastUpdate = timestamp()
 COMMIT
 ```
 
-3. Backup Strategy
-```bash
-# Hot backup command
-neo4j-admin backup --backup-dir=/backup/neo4j --name=full
-```
-
-### Query Examples with Performance Notes
-
-1. Efficient Path Finding
+3. Regular Maintenance Tasks
 ```cypher
-// Use shortest path algorithm for complex relationships
-MATCH path = shortestPath((i1:Item {id: $id1})-[*]-(i2:Item {id: $id2}))
-RETURN path
-```
+// Analyze database statistics
+CALL db.stats()
 
-2. Aggregation Optimization
-```cypher
-// Use efficient aggregation with pre-sorting
-MATCH (i:Item)-[:IN_CATEGORY]->(c:Category)
-WITH c, collect(i.price) AS prices
-RETURN c.name, 
-       percentileCont(prices, 0.5) as median,
-       avg(prices) as mean
-ORDER BY median DESC
+// Check index usage
+CALL db.indexes()
+
+// Review constraints
+CALL db.constraints()
+
+// Analyze query plans
+CALL db.queryPlan('MATCH (n) RETURN n LIMIT 1')
 ```
 
 ### Monitoring Queries
@@ -430,3 +368,30 @@ CALL dbms.queryJmx(
 )
 YIELD name, attributes
 RETURN name, attributes
+```
+
+### Best Practices for Production
+
+1. Regular Backups
+```bash
+# Hot backup command
+neo4j-admin backup --backup-dir=/backup/neo4j --name=full
+```
+
+2. Performance Monitoring
+- Monitor query execution times
+- Track memory usage
+- Monitor cache hit rates
+- Check index performance
+
+3. Data Management
+- Regular cleanup of old data
+- Optimize query patterns
+- Maintain index efficiency
+- Monitor relationship density
+
+4. Error Handling
+- Implement retry logic
+- Handle timeout scenarios
+- Manage connection pools
+- Monitor failed queries
