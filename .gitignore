@@ -45,12 +45,17 @@ docker-compose.override.yml
 
 # Neo4j
 data/neo4j/
+data/neo4j/
 neo4j/data/
 
 # Logs
 logs/
+logs/
 *.log
 
+# Test coverage
+htmlcov/
+.tox/
 # Test coverage
 htmlcov/
 .tox/
