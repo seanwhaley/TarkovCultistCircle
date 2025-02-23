@@ -1,4 +1,7 @@
 # Python
+env/
+venv/
+.venv
 __pycache__/
 *.py[cod]
 *$py.class
@@ -47,11 +50,15 @@ docker-compose.override.yml
 data/neo4j/
 data/neo4j/
 neo4j/data/
+neo4j/logs/
+
+# IDE
+.vscode/
+.idea/
 
 # Logs
 logs/
 logs/
-*.log
 
 # Test coverage
 htmlcov/

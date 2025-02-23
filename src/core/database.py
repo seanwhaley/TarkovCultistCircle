@@ -1,59 +1,95 @@
-from neo4j import GraphDatabase  # Ensure this import is accurate
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator, Optional
 import logging
-from contextlib import contextmanager
-from typing import Optional, ClassVar
+
+from neo4j import AsyncGraphDatabase, AsyncDriver, AsyncSession
+from neo4j.exceptions import ServiceUnavailable
+
+from src.core.config import Settings
+from src.core.exceptions import DatabaseError
 
 logger = logging.getLogger(__name__)
 
-class Neo4jDB:
-    _instance: ClassVar[Optional["Neo4jDB"]] = None
+class DatabaseManager:
+    """Async Neo4j database manager with connection pooling."""
+    
+    _instance: Optional['DatabaseManager'] = None
+    _driver: Optional[AsyncDriver] = None
     
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance.driver = None
-            cls._instance.initialized = False
         return cls._instance
 
-    def initialize(self, uri, user, password):
-        if not self.initialized:
+    @classmethod
+    async def initialize(cls, settings: Settings) -> None:
+        """Initialize database connection pool."""
+        if cls._driver is None:
             try:
-                self.driver = GraphDatabase.driver(uri, auth=(user, password))
-                self.initialized = True
-                logger.info("Neo4j database initialized")
+                cls._driver = AsyncGraphDatabase.driver(
+                    settings.NEO4J_URI,
+                    auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD),
+                    max_connection_pool_size=settings.NEO4J_MAX_POOL_SIZE
+                )
+                # Verify connectivity
+                await cls._driver.verify_connectivity()
+                logger.info("Successfully connected to Neo4j database")
+            except ServiceUnavailable as e:
+                logger.error(f"Failed to connect to Neo4j: {str(e)}")
+                raise DatabaseError("Database service is unavailable")
             except Exception as e:
-                logger.error(f"Failed to initialize Neo4j: {str(e)}")
-                raise
+                logger.error(f"Database initialization error: {str(e)}")
+                raise DatabaseError(f"Failed to initialize database: {str(e)}")
 
-    def init_app(self, app):
-        self.driver = GraphDatabase.driver(
-            app.config['NEO4J_URI'],
-            auth=(app.config['NEO4J_USER'], app.config['NEO4J_PASSWORD'])
-        )
+    @classmethod
+    async def close(cls) -> None:
+        """Close all database connections."""
+        if cls._driver:
+            await cls._driver.close()
+            cls._driver = None
+            logger.info("Database connections closed")
 
-    @contextmanager
-    def get_session(self):
-        if not self.initialized:
-            raise RuntimeError("Database not initialized")
+    @classmethod
+    @asynccontextmanager
+    async def session(cls) -> AsyncGenerator[AsyncSession, None]:
+        """Get a database session."""
+        if not cls._driver:
+            raise DatabaseError("Database not initialized")
+        
         session = None
         try:
-            session = self.driver.session()
+            session = cls._driver.session()
             yield session
+        except Exception as e:
+            logger.error(f"Session error: {str(e)}")
+            raise DatabaseError(f"Database session error: {str(e)}")
         finally:
             if session:
-                session.close()
+                await session.close()
 
-    def close(self):
-        if self.driver:
-            self.driver.close()
-            self.initialized = False
-            self.driver = None
+    @classmethod
+    @asynccontextmanager
+    async def transaction(cls) -> AsyncGenerator[AsyncSession, None]:
+        """Get a database transaction."""
+        async with cls.session() as session:
+            try:
+                tx = await session.begin_transaction()
+                yield tx
+                await tx.commit()
+            except Exception as e:
+                await tx.rollback()
+                logger.error(f"Transaction error: {str(e)}")
+                raise DatabaseError(f"Database transaction error: {str(e)}")
 
-    def test_connection(self):
-        with self.driver.session() as session:
-            result = session.run("RETURN 1")
-            return result.single()[0] == 1
-
-    def run_query(self, query, parameters=None):
-        with self.driver.session() as session:
-            return session.run(query, parameters)
+    @classmethod
+    async def health_check(cls) -> bool:
+        """Check database connectivity."""
+        if not cls._driver:
+            return False
+            
+        try:
+            await cls._driver.verify_connectivity()
+            return True
+        except Exception as e:
+            logger.error(f"Health check failed: {str(e)}")
+            return False

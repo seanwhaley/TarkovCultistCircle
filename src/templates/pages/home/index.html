@@ -1,0 +1,23 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Home - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="mui-container">
+    <h1>Welcome to Tarkov Cultist Circle</h1>
+    
+    <div class="feature-cards">
+        <div class="card">
+            <h3>Item Management</h3>
+            <p>Track and manage Tarkov items with real-time price data.</p>
+            <a href="{{ url_for('items.index') }}" class="btn btn-primary">View Items</a>
+        </div>
+        
+        <div class="card">
+            <h3>Price Optimization</h3>
+            <p>Find optimal item combinations and profit opportunities.</p>
+            <a href="{{ url_for('optimizer.index') }}" class="btn btn-primary">Open Optimizer</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

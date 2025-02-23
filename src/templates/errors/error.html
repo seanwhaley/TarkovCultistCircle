@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container text-center mt-5">
+    <div class="card">
+        <div class="card-body">
+            <i class="material-icons display-1 mb-4" style="font-size: 64px;">
+                {%- if error.code == 404 -%}search_off
+                {%- elif error.code == 403 -%}gpp_bad
+                {%- elif error.code == 401 -%}lock
+                {%- else -%}error
+                {%- endif -%}
+            </i>
+            <h1 class="display-1">{{ error.code }}</h1>
+            <h2 class="mb-4">{{ error.name }}</h2>
+            <p class="lead">{{ error.description }}</p>
+            <a href="/" class="btn btn-primary mt-3 d-inline-flex align-items-center">
+                <i class="material-icons me-2">home</i>
+                Return Home
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

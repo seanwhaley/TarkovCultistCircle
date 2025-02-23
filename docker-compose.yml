@@ -2,66 +2,27 @@ version: '3.8'
 
 services:
   web:
-    build: 
-      context: .
-      dockerfile: Dockerfile
-    container_name: tarkovcultistcircle
+    build: .
     ports:
       - "5000:5000"
-    volumes:
-      - .:/app  # Mount the current directory to /app in the container
+    environment:
+      - FLASK_APP=src/app.py
+      - FLASK_ENV=production
     env_file:
       - .env
     depends_on:
-      neo4j_db:
-        condition: service_healthy
-    restart: always
-    environment:
-      - PYTHONPATH=/app
-      - PYTHONWARNINGS=ignore:Unverified HTTPS request
-      - FLASK_ENV=${FLASK_ENV}
-      - FLASK_APP=${FLASK_APP}
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    command: python src/app.py
-    networks:
-      - tarkov_network
+      - neo4j
+    volumes:
+      - ./src:/app/src
+      - ./static:/app/static
 
-  neo4j_db:
-    image: neo4j:latest
-    container_name: neo4j_container
-    env_file:
-      - .env
+  neo4j:
+    image: neo4j:4.4
     ports:
-      - "${DOCKER_NEO4J_PORT}:7474"
-      - "${DOCKER_NEO4J_BOLT_PORT}:7687"
-      - "${DOCKER_NEO4J_HTTPS_PORT}:7473"
+      - "7474:7474"  # Browser
+      - "7687:7687"  # Bolt
+    environment:
+      - NEO4J_AUTH=neo4j/password  # Change in production
     volumes:
       - ./neo4j/data:/data
       - ./neo4j/logs:/logs
-      - ./neo4j/import:/var/lib/neo4j/import
-      - ./neo4j/plugins:/plugins
-    restart: always
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    healthcheck:
-      test: ["CMD-SHELL", "cypher-shell -a ${NEO4J_AUTH} 'RETURN 1' || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - tarkov_network
-
-networks:
-  tarkov_network:
-    driver: bridge

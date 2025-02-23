@@ -1,0 +1,34 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Register - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="mui-container">
+    <div class="auth-form">
+        <h1>Register</h1>
+        <form method="POST" action="{{ url_for('auth.register') }}" class="mui-form">
+            {{ form.csrf_token }}
+            <div class="mui-textfield">
+                {{ form.username(placeholder="Username", required=true) }}
+                {% if form.username.errors %}
+                    <div class="error">{{ form.username.errors[0] }}</div>
+                {% endif %}
+            </div>
+            <div class="mui-textfield">
+                {{ form.password(placeholder="Password", required=true) }}
+                {% if form.password.errors %}
+                    <div class="error">{{ form.password.errors[0] }}</div>
+                {% endif %}
+            </div>
+            <div class="mui-textfield">
+                {{ form.confirm_password(placeholder="Confirm Password", required=true) }}
+                {% if form.confirm_password.errors %}
+                    <div class="error">{{ form.confirm_password.errors[0] }}</div>
+                {% endif %}
+            </div>
+            <button type="submit" class="mui-btn mui-btn--primary">Register</button>
+            <a href="{{ url_for('auth.login') }}" class="mui-btn mui-btn--flat">Already have an account? Login</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

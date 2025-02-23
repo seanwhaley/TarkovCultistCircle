@@ -1,0 +1,49 @@
+site_name: Tarkov Cultist Circle Documentation
+theme: material
+
+nav:
+  - Home: README.md
+  - Getting Started:
+    - Installation: INSTALLATION.md
+    - Build and Launch: BUILD_AND_LAUNCH.md
+  - User Interface:
+    - Material Design: MATERIAL_DESIGN.md
+    - Components: components.md
+    - Theming: theming.md
+  - API Documentation:
+    - Overview: api.md
+    - API Reference: API_REFERENCE.md
+    - GraphQL Queries: GRAPHQL_QUERIES.md
+  - Database:
+    - Structure: DB_STRUCTURE.md
+    - Schema: schema.md
+  - Contributing:
+    - Guidelines: CONTRIBUTING.md
+    - Changelog: CHANGELOG.md
+  - Help:
+    - FAQ: FAQ.md
+    - License: LICENSE.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - admonition
+  - pymdownx.details
+  - attr_list
+  - md_in_html
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/yourusername/TarkovCultistCircle
+
+extra_css:
+  - stylesheets/extra.css
+
+plugins:
+  - search
+  - minify:
+      minify_html: true

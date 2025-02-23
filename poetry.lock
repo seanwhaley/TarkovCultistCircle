@@ -1,0 +1,2 @@
+# SAFE TO DELETE: Project uses requirements.txt instead of poetry
+# Poetry dependency management has been removed in favor of simpler pip requirements

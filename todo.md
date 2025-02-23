@@ -142,3 +142,77 @@ python -m unittest discover tests
 ## `.env`
 
 * Ensure all sensitive information is stored in environment variables.
+
+# Development Tracking
+
+This project uses GitHub Issues for task tracking. Please refer to the GitHub Issues tab for current tasks, bugs, and feature requests.
+
+## Quick Links
+
+- [Open Issues](https://github.com/username/TarkovCultistCircle/issues)
+- [Project Milestones](https://github.com/username/TarkovCultistCircle/milestones)
+- [Development Project Board](https://github.com/username/TarkovCultistCircle/projects)
+
+## Development Guidelines
+
+1. All new features should be tracked as GitHub Issues
+2. Use labels to categorize issues:
+   - `feature`: New functionality
+   - `bug`: Issues that need to be fixed
+   - `enhancement`: Improvements to existing features
+   - `documentation`: Documentation updates
+   - `security`: Security-related changes
+   - `technical-debt`: Code improvements and refactoring
+
+3. Use milestones to group related issues for releases
+4. Link pull requests to their corresponding issues
+5. Follow the branching convention:
+   - `feature/*` for new features
+   - `fix/*` for bug fixes
+   - `docs/*` for documentation updates
+   - `refactor/*` for code improvements
+
+## Future Updates Structure
+
+For AI-assisted development (like GitHub Copilot), structure feature requests as follows:
+
+```markdown
+### Feature Title
+
+**Business Context:**
+[Describe the business need or user story]
+
+**Technical Requirements:**
+- Specific technical requirements
+- APIs to integrate with
+- Performance requirements
+
+**Acceptance Criteria:**
+- [ ] Measurable outcomes
+- [ ] Expected behaviors
+- [ ] Edge cases to handle
+
+**Implementation Notes:**
+- Suggested implementation approach
+- Relevant existing components
+- Security considerations
+```
+
+The old TODO list has been migrated to GitHub Issues. Please check the issues tab for the current status of all tasks.
+
+// This file has been fully migrated.
+// All tasks and requirements are now tracked in:
+//
+// 1. GitHub Issues:
+//    - Dependency Management (#1)
+//    - Testing Infrastructure (#2)
+//    - Code Quality Tools (#3)
+//    - FastAPI Migration (#4)
+//    - Container Improvements (#5)
+//
+// 2. Documentation:
+//    - Future features: docs/FUTURE_UPDATES.md
+//    - Architecture decisions: docs/ARCHITECTURE.md
+//    - Development guides: docs/ISSUES_GUIDE.md
+//
+// This file can be safely deleted.
