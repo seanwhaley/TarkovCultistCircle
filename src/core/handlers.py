@@ -1,7 +1,7 @@
-from typing import Any, Dict
-
-from fastapi import FastAPI, Request, status
-from fastapi.responses import JSONResponse
+"""Flask error handling configuration."""
+from typing import Any, Dict, Optional
+from flask import jsonify, current_app
+import logging
 from neo4j.exceptions import ServiceUnavailable
 
 from src.core.exceptions import (
@@ -14,90 +14,98 @@ from src.core.exceptions import (
     ValidationError
 )
 
-def setup_exception_handlers(app: FastAPI) -> None:
-    """Configure exception handlers for the FastAPI application."""
+logger = logging.getLogger(__name__)
 
-    @app.exception_handler(AppException)
-    async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
-        """Handle application-specific exceptions."""
-        return JSONResponse(
-            status_code=exc.status_code,
-            content={
-                "message": exc.message,
-                "details": exc.details or {},
-                "status_code": exc.status_code
-            }
-        )
+def register_error_handlers(app):
+    """Register Flask error handlers."""
+    
+    @app.errorhandler(AppException)
+    def handle_app_error(error):
+        response = jsonify({
+            "error": error.message,
+            "details": error.details or {},
+            "status_code": error.status_code
+        })
+        response.status_code = error.status_code
+        return response
 
-    @app.exception_handler(ServiceUnavailable)
-    async def neo4j_unavailable_handler(request: Request, exc: ServiceUnavailable) -> JSONResponse:
-        """Handle Neo4j service unavailable errors."""
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={
-                "message": "Database service unavailable",
-                "details": {"error": str(exc)},
-                "status_code": status.HTTP_503_SERVICE_UNAVAILABLE
-            }
-        )
+    @app.errorhandler(ServiceUnavailable)
+    def handle_database_error(error):
+        response = jsonify({
+            "error": "Database service unavailable",
+            "details": {"error": str(error)},
+            "status_code": 503
+        })
+        response.status_code = 503
+        return response
 
-    @app.exception_handler(ValidationError)
-    async def validation_exception_handler(request: Request, exc: ValidationError) -> JSONResponse:
-        """Handle validation errors."""
-        return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content={
-                "message": exc.message,
-                "details": exc.details or {},
-                "status_code": status.HTTP_422_UNPROCESSABLE_ENTITY
-            }
-        )
+    @app.errorhandler(ValidationError)
+    def handle_validation_error(error):
+        response = jsonify({
+            "error": error.message,
+            "details": error.details or {},
+            "status_code": 422
+        })
+        response.status_code = 422
+        return response
 
-    @app.exception_handler(AuthenticationError)
-    async def auth_exception_handler(request: Request, exc: AuthenticationError) -> JSONResponse:
-        """Handle authentication errors."""
-        return JSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            content={
-                "message": exc.message,
-                "details": exc.details or {},
-                "status_code": status.HTTP_401_UNAUTHORIZED
-            },
-            headers={"WWW-Authenticate": "Bearer"}
-        )
+    @app.errorhandler(AuthenticationError)
+    def handle_authentication_error(error):
+        response = jsonify({
+            "error": error.message,
+            "details": error.details or {},
+            "status_code": 401
+        })
+        response.status_code = 401
+        response.headers["WWW-Authenticate"] = "Bearer"
+        return response
 
-    @app.exception_handler(AuthorizationError)
-    async def authorization_exception_handler(request: Request, exc: AuthorizationError) -> JSONResponse:
-        """Handle authorization errors."""
-        return JSONResponse(
-            status_code=status.HTTP_403_FORBIDDEN,
-            content={
-                "message": exc.message,
-                "details": exc.details or {},
-                "status_code": status.HTTP_403_FORBIDDEN
-            }
-        )
+    @app.errorhandler(AuthorizationError)
+    def handle_authorization_error(error):
+        response = jsonify({
+            "error": error.message,
+            "details": error.details or {},
+            "status_code": 403
+        })
+        response.status_code = 403
+        return response
 
-    @app.exception_handler(NotFoundError)
-    async def not_found_exception_handler(request: Request, exc: NotFoundError) -> JSONResponse:
-        """Handle not found errors."""
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
-            content={
-                "message": exc.message,
-                "details": exc.details or {},
-                "status_code": status.HTTP_404_NOT_FOUND
-            }
-        )
+    @app.errorhandler(NotFoundError)
+    def handle_not_found_error(error):
+        response = jsonify({
+            "error": error.message,
+            "details": error.details or {},
+            "status_code": 404
+        })
+        response.status_code = 404
+        return response
 
-    @app.exception_handler(RateLimitError)
-    async def rate_limit_exception_handler(request: Request, exc: RateLimitError) -> JSONResponse:
-        """Handle rate limit errors."""
-        return JSONResponse(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            content={
-                "message": exc.message,
-                "details": exc.details or {},
-                "status_code": status.HTTP_429_TOO_MANY_REQUESTS
-            }
-        )
+    @app.errorhandler(RateLimitError)
+    def handle_rate_limit_error(error):
+        response = jsonify({
+            "error": error.message,
+            "details": error.details or {},
+            "status_code": 429
+        })
+        response.status_code = 429
+        response.headers["Retry-After"] = str(error.details.get("retry_after", 3600))
+        return response
+
+    @app.errorhandler(404)
+    def not_found(error):
+        response = jsonify({
+            "error": "Resource not found",
+            "status_code": 404
+        })
+        response.status_code = 404
+        return response
+
+    @app.errorhandler(500)
+    def internal_error(error):
+        logger.exception("Internal server error")
+        response = jsonify({
+            "error": "Internal server error",
+            "status_code": 500
+        })
+        response.status_code = 500
+        return response

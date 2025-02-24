@@ -114,6 +114,58 @@ When creating issues that will be implemented with AI assistance:
    - Performance considerations
    - Security implications
 
+## Automated Task Creation
+
+### AI Analysis and Task Generation
+
+The project uses a two-step AI analysis and task generation process:
+
+1. **Project Analysis (Prompt 1)**
+   - Analyzes codebase and generates recommendations
+   - Stored in Neo4j with full context
+   - Viewable in debug interface at `/debug/ai-prompts`
+
+2. **Action Plan Generation (Prompt 2)**
+   - Takes recommendations and creates specific tasks
+   - Tasks are automatically converted to GitHub issues
+   - Issues are linked back to original analysis
+   - Stored in Neo4j with tracking information
+
+### Issue Creation Process
+
+When tasks are generated:
+1. Each task becomes a GitHub issue
+2. Issues are labeled with:
+   - `priority-{high/medium/low}`
+   - `ai-ready`
+   - `type-{security/performance/etc}`
+3. Full context is preserved:
+   - Related requirements
+   - Implementation details
+   - Dependencies
+   - Time estimates
+
+### Task Tracking
+
+Tasks can be tracked through:
+1. **Debug Interface** (`/debug/ai-prompts`)
+   - View original analysis
+   - See generated tasks
+   - Track GitHub issue status
+
+2. **GitHub Issues**
+   - Standard GitHub issue interface
+   - AI-optimized templates
+   - Linked requirements
+   - Implementation guidance
+
+### GitHub Integration
+
+The integration requires:
+1. Set `GITHUB_TOKEN` in environment
+2. Configure `GITHUB_REPO` in environment
+3. Ensure repository has proper issue templates
+
 ## Best Practices
 
 1. **Issue Description**

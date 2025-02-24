@@ -1,76 +1,65 @@
 # Installation Guide
 
-This guide will help you set up the Tarkov Cultist Circle application on your system.
-
 ## Prerequisites
-
-- Python 3.9 or higher
+- Python 3.9+
 - Docker and Docker Compose
-- Node.js and npm (for frontend development)
-- Git
+- Node.js 16+ (for frontend development)
+- Neo4j 5.0+ (automatically installed via Docker)
 
-## Installation Steps
+## Quick Start
 
-### 1. Clone the Repository
+### Windows
+1. Clone the repository
+2. Navigate to the project directory
+3. Run `scripts\setup_windows.bat` or `scripts\setup_windows.ps1`
+4. Copy `example.env` to `.env` and configure your settings
+5. Start development server with `scripts\development.bat`
 
+### Linux/Mac
+1. Clone the repository
+2. Navigate to the project directory
+3. Make scripts executable: `chmod +x scripts/*.sh`
+4. Run `scripts/setup.sh`
+5. Copy `example.env` to `.env` and configure your settings
+6. Start development server with `scripts/development.sh`
+
+## Virtual Environment
+
+The project uses Python's built-in venv module for dependency isolation. The virtual environment is automatically:
+- Created in `.venv` directory during setup
+- Added to `.gitignore` to prevent committing
+- Activated when running development scripts
+
+To manually activate the virtual environment:
+
+Windows (CMD):
+```cmd
+.venv\Scripts\activate.bat
+```
+
+Windows (PowerShell):
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+Linux/Mac:
 ```bash
-git clone https://github.com/yourusername/TarkovCultistCircle.git
-cd TarkovCultistCircle
+source .venv/bin/activate
 ```
 
-### 2. Set Up Python Environment
+You'll know it's activated when you see (.venv) at the start of your command prompt.
 
-Create and activate a virtual environment:
+## Docker Setup
 
-```bash
-python -m venv venv
-# On Windows
-venv\Scripts\activate
-# On Unix or MacOS
-source venv/bin/activate
-```
+1. Ensure Docker and Docker Compose are installed
+2. Run `docker-compose up -d`
+3. Access Neo4j browser at http://localhost:7474
 
-Install Python dependencies:
+## Neo4j Configuration
 
-```bash
-pip install -r requirements.txt
-```
-
-### 3. Configure Environment Variables
-
-Create a `.env` file in the root directory:
-
-```env
-FLASK_SECRET_KEY=your_secret_key
-NEO4J_URI=bolt://neo4j_db:7687
-NEO4J_USER=neo4j
-NEO4J_PASSWORD=your_password
-GRAPHQL_ENDPOINT=https://api.tarkov.dev/graphql
-```
-
-### 4. Set Up Docker Containers
-
-Build and start the containers:
-
-```bash
-docker-compose up --build -d
-```
-
-### 5. Initialize the Database
-
-Run the database initialization script:
-
-```bash
-flask init-db
-```
-
-### 6. Load Initial Data
-
-Ingest data from the Tarkov API:
-
-```bash
-flask ingest-data
-```
+1. Wait for Neo4j container to start (~30 seconds)
+2. Set password in `.env` file (NEO4J_PASSWORD)
+3. Database will be automatically initialized
 
 ## Verification
 
@@ -79,6 +68,13 @@ flask ingest-data
 3. Check the debug panel at `http://localhost:5000/debug`
 
 ## Common Issues
+
+### Virtual Environment
+
+If you see "Virtual environment not found":
+1. Delete `.venv` directory if it exists
+2. Run appropriate setup script again
+3. Check Python version (3.9+ required)
 
 ### Database Connection
 
@@ -94,253 +90,15 @@ If data ingestion fails:
 2. Check Tarkov API endpoint status
 3. Review logs for specific error messages
 
-## Troubleshooting Guide
+## Development Workflow
 
-### Database Issues
-
-#### Neo4j Connection Problems
-```
-Error: Unable to connect to Neo4j database
-```
-Solutions:
-1. Check container status:
-   ```bash
-   docker ps | grep neo4j
-   ```
-2. Verify port availability:
-   ```bash
-   netstat -an | grep 7687
-   ```
-3. Check Neo4j logs:
-   ```bash
-   docker-compose logs neo4j
-   ```
-4. Verify memory allocation is sufficient:
-   - Minimum 2GB for Neo4j container
-   - Check docker-compose.yml settings
-
-#### Data Import Failures
-```
-Error: Failed to import initial dataset
-```
-Solutions:
-1. Check disk space
-2. Verify Neo4j write permissions
-3. Increase Neo4j heap size in docker-compose.yml
-4. Clear Neo4j data and retry:
-   ```bash
-   docker-compose down -v
-   docker-compose up -d
-   ```
-
-### Python Environment Issues
-
-#### Package Installation Failures
-```
-Error: Could not install packages due to an OSError
-```
-Solutions:
-1. Upgrade pip:
-   ```bash
-   python -m pip install --upgrade pip
-   ```
-2. Install build dependencies:
-   - Windows: Install Visual C++ build tools
-   - Linux: `apt-get install python3-dev build-essential`
-3. Clear pip cache:
-   ```bash
-   pip cache purge
-   ```
-
-#### Virtual Environment Problems
-```
-Error: No module named venv
-```
-Solutions:
-1. Windows:
-   ```bash
-   py -m pip install --user virtualenv
-   ```
-2. Linux/MacOS:
-   ```bash
-   sudo apt-get install python3-venv  # Ubuntu/Debian
-   brew install python3-venv  # MacOS
-   ```
-
-### Docker-Related Issues
-
-#### Container Startup Failures
-```
-Error: Container exited with non-zero status
-```
-Solutions:
-1. Check container logs:
-   ```bash
-   docker-compose logs --tail=100 service_name
-   ```
-2. Verify port conflicts:
-   ```bash
-   docker-compose ps
-   ```
-3. Check resource limits:
-   ```bash
-   docker stats
-   ```
-
-#### Volume Mount Issues
-```
-Error: Unable to mount volume
-```
-Solutions:
-1. Check permissions:
-   ```bash
-   ls -la ./neo4j/data
-   ```
-2. Clean up old volumes:
-   ```bash
-   docker-compose down -v
-   docker volume prune
-   ```
-
-### API Integration Issues
-
-#### GraphQL Connection Failures
-```
-Error: Unable to fetch data from Tarkov API
-```
-Solutions:
-1. Verify API status:
-   ```bash
-   curl https://api.tarkov.dev/graphql -X POST -H "Content-Type: application/json"
-   ```
-2. Check rate limits
-3. Verify network connectivity
-4. Use VPN if region-blocked
-
-#### Data Synchronization Problems
-```
-Error: Data sync incomplete or corrupted
-```
-Solutions:
-1. Clear local cache:
-   ```bash
-   flask clear-cache
-   ```
-2. Verify data schema version
-3. Run manual sync:
-   ```bash
-   flask sync-data --force
-   ```
-
-### Platform-Specific Notes
-
-#### Windows
-- Enable WSL2 for better Docker performance
-- Configure line endings:
-  ```bash
-  git config --global core.autocrlf input
-  ```
-- Add Python to PATH during installation
-- Use PowerShell in Admin mode for permissions
-
-#### MacOS
-- Install Homebrew first:
-  ```bash
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-  ```
-- Install dependencies:
-  ```bash
-  brew install python docker docker-compose node
-  ```
-- Grant necessary permissions to Docker
-
-#### Linux
-- Add user to docker group:
-  ```bash
-  sudo usermod -aG docker $USER
-  ```
-- Install system dependencies:
-  ```bash
-  # Ubuntu/Debian
-  sudo apt-get update
-  sudo apt-get install -y python3-pip python3-dev
-  ```
-
-### Development Environment Issues
-
-#### Hot Reload Not Working
-Solutions:
-1. Check file watchers limit (Linux):
-   ```bash
-   echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf
-   sudo sysctl -p
-   ```
-2. Verify debug mode is enabled
-3. Check for syntax errors blocking reload
-
-#### Test Suite Failures
-Solutions:
-1. Verify test database is configured
-2. Check test dependencies:
-   ```bash
-   pip install -r requirements-test.txt
-   ```
-3. Run with verbose output:
-   ```bash
-   python -m pytest -v
-   ```
-
-## Development Setup
-
-For development work:
-
-```bash
-# Install development dependencies
-pip install -r requirements-dev.txt
-
-# Run tests
-python -m unittest discover tests
-
-# Start development server
-flask run --debug
-```
-
-## Health Checks
-
-### Verify Complete Installation
-```bash
-flask verify-install
-```
-
-### Check System Requirements
-```bash
-flask system-check
-```
-
-### Validate Configuration
-```bash
-flask config-check
-```
-
-## Performance Optimization
-
-### Production Deployment
-1. Enable production mode:
-   ```bash
-   export FLASK_ENV=production
-   ```
-2. Configure gunicorn workers
-3. Set up reverse proxy (nginx/apache)
-4. Enable database connection pooling
-
-### Memory Usage
-- Monitor Neo4j heap usage
-- Configure Python garbage collection
-- Set appropriate cache sizes
-- Monitor Docker resource limits
+1. Activate virtual environment (done automatically by development scripts)
+2. Make your changes
+3. Run tests: `pytest`
+4. Submit pull request
 
 ## Next Steps
 
-- Review the [API Documentation](API_REFERENCE.md)
-- Check the [Contributing Guidelines](CONTRIBUTING.md)
-- Explore the [Component Library](components.md)
+1. Review [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines
+2. Set up your IDE with project settings
+3. Configure Git hooks for code quality checks

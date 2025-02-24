@@ -1,21 +1,28 @@
 """Debug and monitoring functionality."""
-# Standard library imports
 import logging
 import platform
 import sys
+import os
+import json
 from functools import wraps
 from typing import Dict, Any
 
 # Third-party imports
-from flask import Blueprint, current_app, abort, render_template, jsonify
+from flask import Blueprint, current_app, abort, render_template, jsonify, request
 
 # Local imports
 from core.database import get_db
 from core.security import admin_required
 from core.health import health_check
 from core.metrics import metrics_collector
+from src.core.config import Config
+from src.database.neo4j import Neo4jDB
+from src.utils.prompt_storage import PromptResponseStorage
 
+logger = logging.getLogger(__name__)
 debug_bp = Blueprint('debug', __name__)
+
+RESPONSES_DIR = "storage/responses"
 
 def debug_only(f):
     """Decorator to ensure route only works in debug mode"""
@@ -107,6 +114,119 @@ async def system_metrics():
         'requests': request_stats,
         'performance': performance_stats
     })
+
+@debug_bp.route('/ai-prompts')
+@admin_required
+@debug_only
+def view_ai_prompts():
+    """View stored AI prompts and responses."""
+    try:
+        # Get JSON files from storage directory
+        file_responses = {}
+        if os.path.exists(RESPONSES_DIR):
+            for filename in os.listdir(RESPONSES_DIR):
+                if filename.endswith('.json'):
+                    filepath = os.path.join(RESPONSES_DIR, filename)
+                    with open(filepath, 'r', encoding='utf-8') as f:
+                        file_responses[filename] = json.load(f)
+
+        # Get Neo4j responses
+        db = Neo4jDB()
+        storage = PromptResponseStorage(db)
+        
+        analysis_prompts = []
+        action_prompts = []
+        
+        raw_prompts = db.get_prompt_responses()
+        for prompt in raw_prompts:
+            if prompt.get('type') == 'analysis' and storage.validate_report_format(prompt):
+                analysis_prompts.append(prompt)
+            elif prompt.get('type') == 'action_plan':
+                action_prompts.append(prompt)
+        
+        return render_template('pages/debug/ai_prompts.html',
+                            file_responses=file_responses,
+                            analysis_prompts=analysis_prompts,
+                            action_prompts=action_prompts,
+                            Config=Config)
+    except Exception as e:
+        logger.error(f"Error fetching AI prompts: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@debug_bp.route('/import-prompt', methods=['POST'])
+@admin_required
+@debug_only
+def import_prompt():
+    """Import a prompt response from JSON file to Neo4j."""
+    try:
+        filename = request.json.get('filename')
+        if not filename:
+            return jsonify({'success': False, 'error': 'Filename is required'}), 400
+
+        filepath = os.path.join(RESPONSES_DIR, filename)
+        if not os.path.exists(filepath):
+            return jsonify({'success': False, 'error': 'File not found'}), 404
+
+        # Read JSON file
+        with open(filepath, 'r', encoding='utf-8') as f:
+            json_data = json.load(f)
+        
+        # Import to Neo4j
+        db = Neo4jDB()
+        storage = PromptResponseStorage(db)
+        prompt_id = storage.import_to_neo4j(json_data)
+        
+        # Delete the file after successful import
+        os.remove(filepath)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Successfully imported to Neo4j',
+            'prompt_id': prompt_id
+        })
+    except Exception as e:
+        logger.error(f"Error importing prompt: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@debug_bp.route('/delete-prompt-file', methods=['POST'])
+@admin_required
+@debug_only
+def delete_prompt_file():
+    """Delete a prompt response JSON file."""
+    try:
+        filename = request.json.get('filename')
+        if not filename:
+            return jsonify({'success': False, 'error': 'Filename is required'}), 400
+
+        filepath = os.path.join(RESPONSES_DIR, filename)
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        
+        return jsonify({
+            'success': True,
+            'message': 'File deleted successfully'
+        })
+    except Exception as e:
+        logger.error(f"Error deleting prompt file: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@debug_bp.route('/view-prompt/<prompt_id>')
+@admin_required
+@debug_only
+def view_prompt(prompt_id):
+    """Get details of a specific prompt from Neo4j."""
+    try:
+        db = Neo4jDB()
+        storage = PromptResponseStorage(db)
+        prompt = storage.get_prompt_by_id(prompt_id)
+        
+        if not prompt:
+            return jsonify({'error': 'Prompt not found'}), 404
+            
+        return jsonify(prompt)
+    except Exception as e:
+        logger.error(f"Error fetching prompt details: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 def _check_neo4j_connection() -> str:
     """Check Neo4j connection status."""

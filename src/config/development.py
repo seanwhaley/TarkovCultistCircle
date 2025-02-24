@@ -9,8 +9,8 @@ class DevelopmentConfig(Config):
     
     # Rate limiting - disabled in development
     RATE_LIMIT_ENABLED = False
-    RATELIMIT_STORAGE_URL = "memory://"
-    RATELIMIT_STRATEGY = "fixed-window"
+    RATE_LIMIT_DEFAULT = 1000
+    RATE_LIMIT_WINDOW = 3600
     
     # Logging - verbose in development
     LOG_LEVEL = 'DEBUG'

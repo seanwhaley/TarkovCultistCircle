@@ -1,59 +1,69 @@
-from flask import jsonify
-from typing import Any, Dict, Generic, List, Optional, TypeVar
-from pydantic import BaseModel, Field
+"""Flask response utilities."""
+from typing import Any, Dict, List, Optional, TypeVar, Generic
+from dataclasses import dataclass
+from flask import jsonify, make_response, Response
 
-DataT = TypeVar("DataT")
+T = TypeVar('T')
 
-class BaseResponse(BaseModel):
-    """Base response model."""
-    success: bool = True
-    message: Optional[str] = None
-
-class ErrorDetail(BaseModel):
-    """Error detail model."""
-    loc: List[str] = Field(..., description="Location of the error")
-    msg: str = Field(..., description="Error message")
-    type: str = Field(..., description="Error type")
-
-class ErrorResponse(BaseResponse):
-    """Error response model."""
-    success: bool = False
-    error: str
-    details: Optional[Dict[str, Any]] = None
-    status_code: int
-
-class DataResponse(BaseResponse, Generic[DataT]):
-    """Success response with data model."""
-    data: DataT
-
-class PaginatedResponse(BaseResponse, Generic[DataT]):
-    """Paginated response model."""
-    data: List[DataT]
-    page: int
-    page_size: int
+@dataclass
+class PaginatedResponse(Generic[T]):
+    """Pagination response container."""
+    items: List[T]
     total: int
-    total_pages: int
+    page: int
+    per_page: int
+    pages: int
     has_next: bool
-    has_previous: bool
+    has_prev: bool
 
-class TokenResponse(BaseResponse):
-    """Token response model."""
-    access_token: str
-    token_type: str = "bearer"
-    
-class HealthResponse(BaseResponse):
-    """Health check response model."""
-    status: str
-    version: str
-    database_connected: bool
-    redis_connected: bool
-    
-class ValidationResponse(ErrorResponse):
-    """Validation error response model."""
-    validation_errors: List[ErrorDetail]
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON response."""
+        return {
+            "items": self.items,
+            "total": self.total,
+            "page": self.page,
+            "per_page": self.per_page,
+            "pages": self.pages,
+            "has_next": self.has_next,
+            "has_prev": self.has_prev
+        }
 
-def success_response(data, status=200):
-    return jsonify({"success": True, "data": data}), status
+def success_response(
+    data: Any = None,
+    message: str = "Success",
+    status_code: int = 200,
+    headers: Optional[Dict[str, str]] = None
+) -> Response:
+    """Create a success response."""
+    response = {
+        "success": True,
+        "message": message,
+        "data": data
+    }
+    return make_response(jsonify(response), status_code, headers or {})
 
-def error_response(message, status=400):
-    return jsonify({"success": False, "error": message}), status
+def error_response(
+    message: str,
+    status_code: int = 400,
+    details: Optional[Dict[str, Any]] = None,
+    headers: Optional[Dict[str, str]] = None
+) -> Response:
+    """Create an error response."""
+    response = {
+        "success": False,
+        "error": message,
+        "details": details or {}
+    }
+    return make_response(jsonify(response), status_code, headers or {})
+
+def paginated_response(
+    data: PaginatedResponse[T],
+    status_code: int = 200,
+    headers: Optional[Dict[str, str]] = None
+) -> Response:
+    """Create a paginated response."""
+    response = {
+        "success": True,
+        "data": data.to_dict()
+    }
+    return make_response(jsonify(response), status_code, headers or {})

@@ -1,0 +1,89 @@
+{
+  "project_metadata": {
+    "core_documentation_files": [
+      {
+        "path": "docs/SCOPE.md",
+        "analysis_priority": "high",
+        "required_sections": ["Core Features", "Implementation Constraints"]
+      },
+      {
+        "path": "docs/ARCHITECTURE.md",
+        "analysis_priority": "high",
+        "required_sections": ["System Overview", "Core Components"]
+      },
+      {
+        "path": "docs/DB_STRUCTURE.md",
+        "analysis_priority": "high",
+        "required_sections": ["Core Node Types", "Relationships", "Constraints"]
+      },
+      {
+        "path": "docs/CHANGELOG.md",
+        "analysis_priority": "medium",
+        "required_sections": ["Unreleased", "Latest Version"]
+      }
+    ],
+    "code_analysis_priorities": {
+      "security": ["authentication", "api_keys", "input_validation", "query_injection"],
+      "performance": ["database_queries", "caching", "api_rate_limiting"],
+      "maintainability": ["code_organization", "documentation", "type_hints"]
+    },
+    "required_metrics": {
+      "test_coverage": {
+        "minimum": 80,
+        "priority": "high"
+      },
+      "documentation_coverage": {
+        "minimum": 90,
+        "priority": "medium"
+      },
+      "code_quality": {
+        "type_hint_coverage": 95,
+        "docstring_coverage": 90,
+        "priority": "medium"
+      }
+    }
+  },
+  "analysis_requirements": {
+    "mandatory_sections": [
+      "executive_summary",
+      "inferred_requirements",
+      "code_quality",
+      "tech_stack",
+      "recommendations"
+    ],
+    "validation_rules": {
+      "executive_summary": {
+        "min_length": 100,
+        "max_length": 500,
+        "required_topics": ["purpose", "architecture", "key_features"]
+      },
+      "recommendations": {
+        "min_count": 3,
+        "max_count": 10,
+        "required_priorities": ["High", "Medium", "Low"],
+        "format": "json"
+      }
+    }
+  },
+  "neo4j_storage": {
+    "node_label": "PromptResponse",
+    "required_properties": [
+      "prompt_id",
+      "timestamp",
+      "project_version",
+      "analysis_report"
+    ],
+    "indexes": [
+      "prompt_id",
+      "timestamp",
+      "project_version"
+    ],
+    "relationships": [
+      {
+        "type": "ANALYZES_VERSION",
+        "direction": "outgoing",
+        "target_label": "ProjectVersion"
+      }
+    ]
+  }
+}

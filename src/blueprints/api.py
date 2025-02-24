@@ -6,8 +6,8 @@ from flask import Blueprint, current_app, jsonify, request
 from flask_login import login_required
 
 # Local imports
-from core.graphql import GraphQLClient
-from core.limiter import rate_limit
+from src.graphql.client import GraphQLClient
+from src.core.rate_limit import rate_limit
 from services.item_service import ItemService
 
 api_bp = Blueprint('api', __name__)
@@ -39,7 +39,7 @@ def get_items():
 
 @api_bp.route('/refresh', methods=['POST'])
 @login_required
-@rate_limit({'default': (current_app.config.get('API_REFRESH_LIMIT', 20), 3600)})
+@rate_limit({'default': (20, 3600)})  # 20 requests per hour
 def refresh_data():
     """
     Refresh data from the Tarkov API.

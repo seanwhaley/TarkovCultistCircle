@@ -12,11 +12,10 @@ class ProductionConfig(Config):
     REMEMBER_COOKIE_SECURE = True
     SESSION_COOKIE_SAMESITE = 'Strict'
     
-    # Rate limiting
+    # Rate limiting - enabled with strict limits
     RATE_LIMIT_ENABLED = True
-    RATELIMIT_STORAGE_URL = "memory://"
-    RATELIMIT_STRATEGY = "fixed-window"
-    RATELIMIT_DEFAULT = "1000 per hour"
+    RATE_LIMIT_DEFAULT = 1000
+    RATE_LIMIT_WINDOW = 3600
     
     # Logging
     LOG_LEVEL = 'INFO'

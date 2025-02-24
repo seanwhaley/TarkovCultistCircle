@@ -1,5 +1,17 @@
 # Application Architecture
 
+## Overview
+This application uses a Flask-based architecture with Neo4j as the primary database.
+
+## File Management Policy
+When removing files from the project:
+1. Use PowerShell's Remove-Item command first:
+   ```powershell
+   Remove-Item -Path "path/to/file" -Force
+   ```
+2. Ensure all contents are completely removed
+3. Update relevant documentation and dependencies
+
 ## System Overview
 
 ```
@@ -9,36 +21,34 @@
         │                      │                     │
         ▼                      ▼                     ▼
 ┌─────────────────┐     ┌──────────────┐     ┌───────────────┐
-│ Material Design │     │ Query Cache  │     │ Price Updates │
-└─────────────────┘     └──────────────┘     └───────────────┘
+│ Material Design │     │ In-Memory    │     │ Price Updates │
+└─────────────────┘     │   Cache      │     └───────────────┘
+                        └──────────────┘     
 ```
 
 ## Design Decisions
 
-### Database Choice: Neo4j
-- **Rationale**: Chosen for its native graph capabilities and built-in features:
-  - Complex item relationship traversal
-  - Efficient path-finding algorithms for combinations
-  - Rich query language (Cypher) for relationship-based queries
-  - Built-in algorithms for optimization problems
-  - Native query result caching
-  - Efficient connection pooling
+### Framework Choice: Flask-Only Architecture
+- **Rationale**: 
+  - Simplified single-framework approach
+  - Reduced complexity in routing and middleware
+  - Easier maintenance and debugging
+  - Sufficient performance for small-scale deployment
+  - Built-in session management and request handling
 
-### Framework: Flask
-- **Rationale**: Selected for:
-  - Lightweight and flexible architecture
-  - Strong Python ecosystem integration
-  - Extensive middleware support
-  - Easy GraphQL integration via Ariadne
-  - Simple async support with ASGI
+### Rate Limiting Implementation
+- **Strategy**: Simple in-memory implementation
+  - Lightweight and suitable for small user base
+  - No external dependencies
+  - Automatic cleanup of old entries
+  - IP-based rate limiting with configurable windows
 
-### UI: Material Design 3
-- **Rationale**: Implemented for:
-  - Consistent and modern user experience
-  - Built-in responsive design patterns
-  - Rich component ecosystem
-  - Accessibility compliance
-  - Theme customization support
+### Database: Neo4j
+- **Rationale**: 
+  - Efficient graph operations for item relationships
+  - Built-in query result caching
+  - Native support for complex item relationship queries
+  - Sufficient for current scale without additional caching layer
 
 ## Core Components
 
@@ -47,47 +57,24 @@ The core module provides essential functionality with minimal complexity:
 
 1. Rate Limiting
    - Simple in-memory implementation
-   - Global 1000 requests per hour per IP limit
-   - No complex route-specific rules
+   - Global request limits per IP
+   - Configurable time windows
+   - Automatic cleanup
 
 2. User Authentication
-   - Basic Flask-Login integration
+   - Flask-Login integration
    - Simple session management
-   - Strong session protection
+   - JWT support for API routes
 
 3. Request Metrics
    - Basic request counting
    - Error tracking
-   - Hourly reset
-   - No complex performance metrics
+   - Minimal overhead
 
-4. Form Validation
-   - Simple type checking
-   - Essential field validation
-   - No complex validation rules
-
-5. Database Transactions
-   - Simple transaction management
-   - Basic error handling
+4. Database Layer
    - Direct Neo4j integration
-
-### Database Layer
-   - Neo4j native query caching
-   - Direct database connections
-   - Transaction management via decorators
-   - No ORM complexity
-
-### API Integration
-   - Direct Tarkov.dev API calls
-   - Simple response caching via Neo4j
-   - Basic error handling
-   - No complex retry logic
-
-### User Interface
-   - Material Design components
-   - Simple theme system
-   - Basic responsive layout
-   - No complex animations
+   - Transaction management
+   - Query result caching
 
 ## Data Flow
 1. Request → Rate Limiter → Route Handler
@@ -109,11 +96,10 @@ The core module provides essential functionality with minimal complexity:
 - No complex orchestration
 
 ## Future Considerations
-Keep future changes aligned with these principles:
-1. Prefer simplicity over feature richness
-2. Use built-in functionality over custom solutions
-3. Keep core components minimal
-4. Avoid introducing new dependencies
+- Keep the architecture simple and focused
+- Avoid introducing complex dependencies
+- Leverage Flask's built-in capabilities
+- Scale vertically before adding complexity
 
 ## Technical Requirements
 
@@ -124,13 +110,12 @@ Keep future changes aligned with these principles:
 - Initial Load: <3s First Contentful Paint
 
 ### Scalability
-- Handles 1000+ concurrent users
-- Manages 100k+ items
-- Processes 1000+ requests/second
-- 99.9% uptime SLA
+- Handles concurrent users appropriate for small deployments
+- Manages item catalog efficiently
+- 99.9% uptime with minimal infrastructure
 
 ### Security
-- In-memory rate limiting per IP/user
+- In-memory rate limiting per IP
 - Input sanitization
 - CSRF protection
 - Secure sessions
@@ -162,6 +147,11 @@ Keep future changes aligned with these principles:
 - Flask application container
 - Neo4j database container
 - Nginx reverse proxy
+
+### Rate Limiting
+- In-memory rate limiting implementation
+- Configurable limits per endpoint
+- IP-based request tracking
 
 ### Monitoring
 - Prometheus metrics

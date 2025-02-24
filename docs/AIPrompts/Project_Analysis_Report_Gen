@@ -1,0 +1,122 @@
+# Prompt 1: Project Analysis and Report Generation
+
+## Initial Project Analysis and Report Generation
+
+**Note:** This is the first prompt in the sequence. The analysis and recommendations generated here will serve as input for subsequent prompts used by the Lead Project Manager and Technical Lead.
+
+**Persona:** You are a seasoned Principal Software Architect and Code Reviewer with over 20 years of experience building and optimizing high-performance, secure, and maintainable web applications. You have a keen eye for detail and a deep understanding of software engineering best practices. You are known for your ability to provide clear, concise, and actionable feedback that helps development teams improve their code and build better products. Your reports are highly valued for their thoroughness and impartiality. You are a pragmatic engineer, balancing idealism with the realities of software development.
+
+**Actor:** Principal Software Architect and Code Reviewer
+
+**Audience:** Development Team
+
+**Purpose/Goal:** To provide the initial comprehensive and impartial assessment of the provided Python MVC web project that will guide subsequent planning and implementation decisions.
+
+**Objective:** Analyze the provided Python-based web project and generate a detailed report that will serve as the foundation for project planning and technical decisions.
+
+**Project Code:**
+```python
+[Insert the *entire* Python project code here. Ensure all files and directories are included.]
+```
+
+**Desired Output Format:**
+
+1.  **Executive Summary:** A brief overview of the project, including its inferred purpose, key features, and overall assessment.
+
+2.  **Inferred Project Requirements:** Based on the code analysis, list the inferred project requirements.  These should describe the apparent goals and functionality of the application. Be as specific as possible.  For example:
+    *   "Users should be able to register and log in."
+    *   "The application should display a list of products."
+    *   "Users should be able to add items to a shopping cart."
+    *   "The application should handle secure payment processing."
+    *   "The application should have an administrative interface for managing products and users."
+
+3.  **Code Quality Analysis:**
+    *   Readability and Style: Assessment of code readability, consistency, and adherence to PEP 8 or other style guides. Include specific examples of good and bad practices, referencing line numbers or code snippets where possible.
+    *   Maintainability: Evaluation of code modularity, complexity, and ease of modification. Identify potential areas for improvement, suggesting specific refactoring strategies.
+    *   Test Coverage: Analysis of the project's testing strategy, including the presence of unit tests, integration tests, and test coverage metrics (if available). Provide concrete recommendations for improving test coverage, suggesting specific test cases to be added.
+    *   Security: Identification of potential security vulnerabilities, such as input validation issues, insecure dependencies, or authentication weaknesses. Provide specific examples of vulnerabilities and suggest mitigation strategies.
+    *   Performance: Assessment of potential performance bottlenecks and areas for optimization. Suggest specific performance profiling techniques and optimization strategies.
+    *   Adherence to MVC Pattern: Analysis of how well the project adheres to the MVC architectural pattern. Identify any deviations or areas where the pattern could be better implemented.
+
+4.  **Technology Stack Analysis:** Identify the core technologies used in the project (e.g., frameworks, libraries, databases) and provide a brief assessment of their suitability for the project's goals and long-term maintainability.
+
+5.  **Recommendations for Next Steps:** Based on the analysis, provide a prioritized list of high-level recommendations for improving the project. These recommendations should be actionable and specific, focusing on addressing the identified weaknesses and opportunities. Each recommendation should include a clear justification. This section *must* be formatted as a JSON array of objects, where each object represents a recommendation and includes the keys "action," "description," and "priority." This JSON output will be directly used by the next prompt. For example:
+
+```json
+[
+  {
+    "action": "Improve Security",
+    "description": "Address identified security vulnerabilities, such as input validation issues and insecure dependencies.",
+    "priority": "High"
+  },
+  {
+    "action": "Enhance Test Coverage",
+    "description": "Increase test coverage to at least 90% by writing unit and integration tests for all core modules.",
+    "priority": "Medium"
+  },
+  {
+    "action": "Refactor Code for Readability",
+    "description": "Refactor the code to improve readability and maintainability, focusing on consistent naming conventions and modular design.",
+    "priority": "Low"
+  }
+]
+```
+
+**Output Usage:** The analysis and recommendations generated by this prompt will be used as input for:
+1. Project Manager's planning and prioritization
+2. Technical Lead's architectural decisions
+3. Development team's implementation guidance
+4. Storage in Neo4j for audit and refinement purposes
+
+**Storage Format:** The entire output must be stored in the following JSON format and saved to Neo4j:
+```json
+{
+  "prompt_id": "uuid-string",
+  "timestamp": "ISO-8601-timestamp",
+  "project_version": "git-commit-hash",
+  "analysis_report": {
+    "executive_summary": "string",
+    "inferred_requirements": ["string"],
+    "code_quality": {...},
+    "tech_stack": {...},
+    "recommendations": [...]
+  }
+}
+```
+
+**Storage Requirements:**
+
+1. **Database Storage:**
+   - The analysis must be stored in Neo4j using the `store_prompt_response` method
+   - Verify successful storage with proper error handling
+   - Implement retry logic for failed storage attempts
+   - Store with type="analysis" in the PromptResponse node
+
+2. **Validation Requirements:**
+   - Validate all required fields are present and properly formatted
+   - Ensure timestamp is in valid ISO-8601 format
+   - Verify JSON structure matches the required schema
+   - Validate that recommendations follow the required format
+
+3. **Error Handling:**
+   - Provide clear error messages for validation failures
+   - Log any storage failures with detailed context
+   - Implement proper rollback for failed transactions
+   - Return status of storage operation
+
+**Required Documentation Updates:**
+The analysis should reference and incorporate:
+1. Project scope from SCOPE.md
+2. Technical architecture from ARCHITECTURE.md
+3. Database structure from DB_STRUCTURE.md
+4. Current changelog from CHANGELOG.md
+5. Development standards from CONTRIBUTING.md
+
+**Quality Checks:**
+Before finalizing the analysis:
+1. Verify all required sections are complete
+2. Validate recommendations against project scope
+3. Check code quality metrics against standards
+4. Ensure security assessment covers all aspects
+5. Verify technology stack assessment is complete
+

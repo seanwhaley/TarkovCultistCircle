@@ -1,6 +1,7 @@
+"""Neo4j graph models and validation."""
 from enum import Enum
 from dataclasses import dataclass
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
 from datetime import datetime
 
 class NodeLabels(Enum):
@@ -10,6 +11,10 @@ class NodeLabels(Enum):
     PRICE_HISTORY = "PriceHistory"
     BARTER = "Barter"
     CRAFT = "Craft"
+    ARMOR = "Armor"
+    MATERIAL = "Material"
+    WEAPON_STATS = "WeaponStats"
+    TRADE = "Trade"
 
 class RelationshipTypes(Enum):
     HAD_PRICE = "HAD_PRICE"
@@ -18,6 +23,15 @@ class RelationshipTypes(Enum):
     VENDOR_SOLD = "VENDOR_SOLD"
     USED_IN_CRAFT = "USED_IN_CRAFT"
     USED_IN_BARTER = "USED_IN_BARTER"
+    HAS_ARMOR = "HAS_ARMOR"
+    MADE_OF = "MADE_OF"
+    HAS_STATS = "HAS_STATS"
+    REQUIRES = "REQUIRES"
+    WITH_COUNT = "WITH_COUNT"
+    PRODUCES = "PRODUCES"
+    AT_STATION = "AT_STATION"
+    FROM_VENDOR = "FROM_VENDOR"
+    TO_VENDOR = "TO_VENDOR"
 
 @dataclass
 class NodeProperties:
@@ -26,8 +40,8 @@ class NodeProperties:
             'id': str,
             'name': str,
             'normalized_name': str,
-            'base_price': str,
-            'updated': str
+            'base_price': float,
+            'updated': datetime
         }
         optional = {
             'short_name': str,
@@ -38,16 +52,20 @@ class NodeProperties:
             'wiki_link': str,
             'has_grid': bool,
             'blocks_headphones': bool,
-            'max_stackable': int
+            'max_stackable': int,
+            'last_low_price': float,
+            'avg_24h_price': float
         }
 
     class PriceHistory:
         required = {
-            'fetched_at': datetime,
-            'price_rub': str,
+            'price_rub': float,
+            'recorded_at': datetime,
             'vendor_name': str
         }
         optional = {
+            'currency': str,
+            'original_price': float,
             'requires_quest': bool,
             'restock_amount': int
         }
@@ -65,37 +83,57 @@ class NodeProperties:
     class Category:
         required = {
             'id': str,
+            'name': str
+        }
+
+    class Armor:
+        required = {
+            'class': int,
+            'zones': List[str],
+            'durability': int
+        }
+
+    class Material:
+        required = {
             'name': str,
-            'normalized_name': str
+            'destructibility': float
         }
 
-    class Craft:
+    class WeaponStats:
+        required = {
+            'caliber': str,
+            'firerate': int,
+            'ergonomics': int,
+            'recoil_vertical': int,
+            'recoil_horizontal': int
+        }
+
+    class Trade:
         required = {
             'id': str,
-            'station': str,
+            'type': str,  # 'barter' or 'craft'
+            'price_rub': float,
+            'recorded_at': datetime
+        }
+        optional = {
             'level': int,
-            'duration': int
-        }
-
-    class Barter:
-        required = {
-            'id': str,
-            'trader': str,
-            'level': int
+            'currency': str,
+            'original_price': float,
+            'requires_quest': bool
         }
 
 @dataclass
 class RelationshipProperties:
     class VendorPrice:
         required = {
-            'price_rub': str,
-            'recorded_at': datetime,
+            'price_rub': float,
+            'recorded_at': datetime
         }
         optional = {
-            'currency_code': str,
-            'original_price': str,
+            'currency': str,
+            'original_price': float,
             'requires_loyalty': int,
-            'requires_quest': str,
+            'requires_quest': str
         }
 
     class RequiredFor:
@@ -111,8 +149,8 @@ class RelationshipProperties:
 
     class MarketAnalysis:
         required = {
-            'change_48h': str,
-            'change_48h_percent': str,
+            'change_24h': float,
+            'change_48h': float,
             'recorded_at': datetime
         }
         optional = {
@@ -121,42 +159,48 @@ class RelationshipProperties:
             'volatility_score': float
         }
 
-    class UserTracks:
-        required = {
-            'started_at': datetime,
-        }
-        optional = {
-            'price_threshold': float,
-            'notify_on_change': bool,
-            'notes': str,
-        }
-
 def validate_node(label: NodeLabels, properties: Dict) -> List[str]:
     """Validate node properties against the model."""
-    node_class = getattr(NodeProperties, label.name)
     issues = []
-    
+    model = getattr(NodeProperties, label.name, None)
+    if not model:
+        return [f"Unknown node label: {label.name}"]
+
     # Check required properties
-    for prop, prop_type in node_class.required.items():
+    for prop, prop_type in model.required.items():
         if prop not in properties:
             issues.append(f"Missing required property: {prop}")
         elif not isinstance(properties[prop], prop_type):
             issues.append(f"Invalid type for {prop}: expected {prop_type.__name__}")
-    
+
+    # Check optional properties
+    if hasattr(model, 'optional'):
+        for prop, value in properties.items():
+            if prop in model.optional and value is not None:
+                if not isinstance(value, model.optional[prop]):
+                    issues.append(f"Invalid type for optional {prop}")
+
     return issues
 
 def validate_relationship(rel_type: RelationshipTypes, properties: Dict) -> List[str]:
     """Validate relationship properties against the model."""
-    if not hasattr(RelationshipProperties, rel_type.name):
-        return []
-        
-    rel_class = getattr(RelationshipProperties, rel_type.name)
     issues = []
-    
-    for prop, prop_type in rel_class.required.items():
+    model = getattr(RelationshipProperties, rel_type.name, None)
+    if not model:
+        return [f"Unknown relationship type: {rel_type.name}"]
+
+    # Check required properties
+    for prop, prop_type in model.required.items():
         if prop not in properties:
             issues.append(f"Missing required property: {prop}")
         elif not isinstance(properties[prop], prop_type):
             issues.append(f"Invalid type for {prop}: expected {prop_type.__name__}")
-    
+
+    # Check optional properties
+    if hasattr(model, 'optional'):
+        for prop, value in properties.items():
+            if prop in model.optional and value is not None:
+                if not isinstance(value, model.optional[prop]):
+                    issues.append(f"Invalid type for optional {prop}")
+
     return issues

@@ -4,11 +4,10 @@ from datetime import timedelta
 
 class RateLimitConfig(TypedDict):
     enabled: bool
-    default_limits: List[str]
+    default_limit: int
+    default_window: int
     headers_enabled: bool
-    storage_uri: str
-    strategy: str
-    
+
 class DatabaseConfig(TypedDict):
     uri: str
     auth_type: Literal["basic", "oauth"]
@@ -46,7 +45,8 @@ class ConfigProtocol(Protocol):
     
     # Rate limiting
     RATELIMIT_ENABLED: bool
-    RATELIMIT_DEFAULTS: Dict[str, Any]
+    RATELIMIT_DEFAULT: int
+    RATELIMIT_WINDOW: int
     
     # Pagination
     ITEMS_PER_PAGE: int

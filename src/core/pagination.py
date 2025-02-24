@@ -1,11 +1,13 @@
-from typing import Generic, List, Optional, TypeVar
-from fastapi import Query
-from pydantic import BaseModel
+"""Flask pagination utilities."""
+from typing import TypeVar, Generic, List, Optional, Dict
+from dataclasses import dataclass
+from flask import request, url_for
 
-T = TypeVar("T")
+T = TypeVar('T')
 
-class Page(BaseModel, Generic[T]):
-    """Paginated response wrapper."""
+@dataclass
+class Page(Generic[T]):
+    """Pagination result container."""
     items: List[T]
     total: int
     page: int
@@ -15,30 +17,65 @@ class Page(BaseModel, Generic[T]):
     has_prev: bool
 
 class Pagination:
-    """Pagination parameter handler for FastAPI."""
+    """Pagination parameter handler for Flask."""
     
     def __init__(
         self,
-        page: int = Query(1, ge=1, description="Page number"),
-        size: int = Query(50, ge=1, le=100, description="Items per page"),
-        sort: Optional[str] = Query(None, description="Sort field"),
-        order: Optional[str] = Query(None, pattern="^(asc|desc)$", description="Sort order")
+        page: int = 1,
+        size: int = 20,
+        max_size: int = 100,
+        sort: Optional[str] = None,
+        order: Optional[str] = None
     ):
-        self.page = page
-        self.size = size
+        self.page = max(1, page)
+        self.size = min(max_size, max(1, size))
         self.sort = sort
-        self.order = order
+        self.order = order if order in ('asc', 'desc') else None
         
-    @property
-    def skip(self) -> int:
-        """Calculate number of records to skip."""
+    @classmethod
+    def from_request(cls) -> 'Pagination':
+        """Create pagination from Flask request args."""
+        return cls(
+            page=request.args.get('page', 1, type=int),
+            size=request.args.get('size', 20, type=int),
+            sort=request.args.get('sort'),
+            order=request.args.get('order')
+        )
+        
+    def get_skip(self) -> int:
+        """Get number of items to skip."""
         return (self.page - 1) * self.size
         
-    def get_order_by(self, default_sort: str = "created_at") -> tuple[str, bool]:
-        """Get sort field and direction."""
-        sort_field = self.sort or default_sort
-        is_desc = self.order == "desc" if self.order else True
-        return sort_field, is_desc
+    def get_page_links(self, endpoint: str, **kwargs) -> Dict[str, Optional[str]]:
+        """Generate pagination links using Flask url_for."""
+        links = {
+            "self": url_for(
+                endpoint,
+                page=self.page,
+                size=self.size,
+                **kwargs,
+                _external=True
+            ),
+            "first": url_for(
+                endpoint,
+                page=1,
+                size=self.size,
+                **kwargs,
+                _external=True
+            ),
+            "last": None,
+            "next": None,
+            "prev": None
+        }
+        
+        if self.sort:
+            for key in links:
+                if links[key]:
+                    links[key] = f"{links[key]}&sort={self.sort}"
+                    if self.order:
+                        links[key] = f"{links[key]}&order={self.order}"
+        
+        return links
         
     def create_page(self, items: List[T], total: int) -> Page[T]:
         """Create a Page object from results."""
@@ -52,32 +89,3 @@ class Pagination:
             has_next=self.page < pages,
             has_prev=self.page > 1
         )
-
-    def get_page_links(self, base_url: str) -> dict[str, Optional[str]]:
-        """Generate pagination links."""
-        links = {
-            "self": f"{base_url}?page={self.page}&size={self.size}",
-            "first": f"{base_url}?page=1&size={self.size}",
-            "last": None,
-            "next": None,
-            "prev": None
-        }
-        
-        if self.sort:
-            for key in links:
-                if links[key]:
-                    links[key] += f"&sort={self.sort}"
-                    if self.order:
-                        links[key] += f"&order={self.order}"
-        
-        return links
-
-def paginate(page: Pagination) -> dict:
-    """Convert pagination parameters to database query parameters."""
-    sort_field, is_desc = page.get_order_by()
-    return {
-        "skip": page.skip,
-        "limit": page.size,
-        "sort_field": sort_field,
-        "sort_desc": is_desc
-    }

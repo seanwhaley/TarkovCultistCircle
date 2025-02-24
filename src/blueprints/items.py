@@ -27,7 +27,7 @@ def get_item_service() -> ItemService:
     return _item_service
 
 @bp.route('/')
-@cached(timeout=lambda: current_app.config['CACHE_DEFAULT_TIMEOUT'])
+@cached(timeout_seconds=lambda: current_app.config.get('CACHE_DEFAULT_TIMEOUT', 300))
 def index() -> ResponseType:
     try:
         page = request.args.get('page', 1, type=int)
@@ -55,7 +55,7 @@ def index() -> ResponseType:
         return render_template('pages/errors/500.html'), 500
 
 @bp.route('/<item_id>')
-@cached(timeout=60)
+@cached(timeout_seconds=60)
 def detail(item_id: str) -> ResponseType:
     try:
         item = get_item_service().get_item(item_id)

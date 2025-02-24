@@ -6,7 +6,7 @@ from src.types.responses import ResponseType
 main_bp = Blueprint('main', __name__)
 
 @main_bp.route('/')
-@cached(timeout=300)
+@cached(timeout_seconds=300)
 def index() -> ResponseType:
     return render_template('pages/home/index.html')
 

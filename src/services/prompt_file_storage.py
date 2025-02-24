@@ -1,0 +1,1 @@
+"""This service has been deprecated as prompt responses are now stored directly as JSON files."""

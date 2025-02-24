@@ -1,89 +1,73 @@
 # Tarkov Cultist Circle
 
-A lightweight web application for optimizing Escape from Tarkov item combinations using Neo4j.
+A lightweight Tarkov item optimizer using Flask and Neo4j.
+
+## Architecture
+
+- **Web Framework**: Flask
+- **Database**: Neo4j
+- **Rate Limiting**: In-memory implementation
+- **Caching**: Neo4j native query caching
+- **UI**: Material Design
+
+## Design Principles
+
+- Simplicity first: Single framework, minimal dependencies
+- In-memory solutions where possible
+- Vertical scaling
+- Built for small to medium user base
 
 ## Features
 
-- Item combination optimization
+- Item optimization
+- Market analysis
 - Price tracking
-- Basic market data integration
-- Simple Material Design UI
+- Simple rate limiting
+- JWT authentication
+- GraphQL client for Tarkov.dev API
 
-## Prerequisites
+## Getting Started
 
-- Docker and Docker Compose
-- Git
-
-## Quick Start
-
-1. Clone the repository
-2. Copy example.env to .env and configure
-3. Run:
+1. Install dependencies:
 ```bash
-docker-compose up -d
-```
-4. Access at http://localhost:5000
-
-## Development
-
-### Setup
-
-```bash
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
 pip install -r requirements.txt
 ```
 
-### Testing
+2. Set up environment variables (copy example.env to .env)
 
+3. Start Neo4j:
 ```bash
-python -m pytest
+docker-compose up -d neo4j
 ```
 
-### Project Structure
-
-```
-/
-├── docker-compose.yml    # Container configuration
-├── src/                  # Application code
-│   ├── app.py           # Main Flask application
-│   ├── models/          # Data models
-│   ├── views/           # Route handlers
-│   ├── static/          # CSS, JS files
-│   └── templates/       # HTML templates
-├── tests/               # Test cases
-└── requirements.txt     # Python dependencies
+4. Run the application:
+```bash
+flask run
 ```
 
-### Documentation
+## Development
 
-Additional documentation has been consolidated here from the original multiple files. This simplified structure better matches the project scope and makes maintenance easier.
+See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for development guidelines.
 
-#### Database Schema
+## Documentation
 
-Neo4j graph structure:
-- Items (nodes)
-- Relationships (edges)
-- Properties (name, price, etc.)
+- [Installation Guide](docs/INSTALLATION.md)
+- [Architecture Overview](docs/ARCHITECTURE.md)
+- [API Documentation](docs/api/index.md)
+- [Database Structure](docs/DB_STRUCTURE.md)
 
-#### API Integration
+## Performance
 
-Simplified integration with Tarkov.dev API for basic item data.
+The application is optimized for:
+- Up to 1000 concurrent users
+- 100k+ items in database
+- Sub-100ms API responses
+- Efficient item relationship traversal
 
-#### Contributing 
+## Support
 
-1. Fork the repository
-2. Create feature branch
-3. Submit pull request
-
-Issues and feature requests are tracked in GitHub Issues, but given the project scope, expect focused updates primarily for:
-- Bug fixes
-- Essential features
-- Critical security updates
+See [SUPPORT.md](docs/SUPPORT.md) for support options.
 
 ## License
 
-MIT License - See LICENSE file
+This project is licensed under the terms found in [LICENSE.md](docs/LICENSE.md).

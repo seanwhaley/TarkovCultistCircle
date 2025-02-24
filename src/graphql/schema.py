@@ -3,38 +3,16 @@ from typing import List, Optional
 
 import strawberry
 from strawberry.types import Info
-from strawberry.fastapi import GraphQLRouter
 
-from src.core.deps import get_current_user, get_item_service
-from src.models.item import Item
-from src.models.user import User
+from src.services.item_service import ItemService
+from src.services.market_service import MarketService
+from src.models.item import Item, MarketData, PriceEntry
 
-@strawberry.type
-class ItemType:
-    uid: str
-    name: str
-    base_price: float
-    current_price: Optional[float]
-    blacklisted: bool
-    locked: bool
-    created_at: datetime
-    updated_at: datetime
-
-    @classmethod
-    def from_pydantic(cls, item: Item) -> "ItemType":
-        return cls(
-            uid=item.uid,
-            name=item.name,
-            base_price=item.base_price,
-            current_price=item.current_price,
-            blacklisted=item.blacklisted,
-            locked=item.locked,
-            created_at=item.created_at,
-            updated_at=item.updated_at
-        )
+item_service = ItemService()
+market_service = MarketService()
 
 @strawberry.type
-class MarketAnalytics:
+class MarketAnalysisType:
     volatility: float
     trend: str
     confidence: float
@@ -42,98 +20,170 @@ class MarketAnalytics:
     price_change_24h: float
 
 @strawberry.type
+class PriceHistoryType:
+    price: float
+    timestamp: datetime
+    vendor: str
+    currency: Optional[str]
+    requires_quest: Optional[bool]
+
+@strawberry.type
+class CraftRequirementType:
+    item_name: str
+    quantity: int
+    base_price: float
+    current_price: Optional[float]
+
+@strawberry.type
+class CraftAnalysisType:
+    station: str
+    level: int
+    duration: int
+    requirements: List[CraftRequirementType]
+    output_count: int
+    total_cost: float
+    sell_price: float
+    profit: float
+    profit_per_hour: float
+
+@strawberry.type
+class TradeOpportunityType:
+    item_name: str
+    buy_price: float
+    sell_price: float
+    profit: float
+    profit_percent: float
+    buy_vendor: str
+    sell_vendor: str
+    market_data: Optional[MarketAnalysisType]
+    barter_options: Optional[List[str]]
+    craft_options: Optional[List[CraftRequirementType]]
+
+@strawberry.type
+class MarketStatisticsType:
+    total_items: int
+    avg_price: float
+    items_above_base: int
+    percent_above_base: float
+    volatility_index: Optional[float]
+    trade_volume_24h: Optional[int]
+
+@strawberry.type
+class ItemType:
+    uid: str
+    name: str
+    base_price: float
+    current_price: Optional[float]
+    properties: Optional[dict]
+    market_data: Optional[MarketAnalysisType]
+    price_history: List[PriceHistoryType]
+    craft_analysis: Optional[CraftAnalysisType]
+
+@strawberry.type
 class Query:
+    @strawberry.field
+    async def item(self, info: Info, item_id: str) -> Optional[ItemType]:
+        """Get a single item by ID."""
+        return await item_service.get_by_id(item_id)
+
     @strawberry.field
     async def items(
         self,
         info: Info,
-        skip: int = 0,
-        limit: int = 100
+        search: Optional[str] = None,
+        category: Optional[str] = None,
+        min_price: Optional[float] = None,
+        max_price: Optional[float] = None,
+        limit: int = 20
     ) -> List[ItemType]:
-        service = await get_item_service(info.context["request"])
-        items = await service.get_items(skip=skip, limit=limit)
-        return [ItemType.from_pydantic(item) for item in items]
+        """Search for items with filters."""
+        return await item_service.search_items(
+            search=search,
+            category=category,
+            min_price=min_price,
+            max_price=max_price,
+            limit=limit
+        )
 
     @strawberry.field
-    async def item(
-        self,
-        info: Info,
-        item_id: str
-    ) -> Optional[ItemType]:
-        service = await get_item_service(info.context["request"])
-        try:
-            item = await service.get_by_id(item_id)
-            return ItemType.from_pydantic(item)
-        except:
-            return None
+    async def market_statistics(self, info: Info) -> MarketStatisticsType:
+        """Get overall market statistics."""
+        return await market_service.get_market_statistics()
 
     @strawberry.field
-    async def market_analytics(
+    async def price_history(
         self,
         info: Info,
-        item_id: str
-    ) -> Optional[MarketAnalytics]:
-        service = await get_item_service(info.context["request"])
-        try:
-            analytics = await service.get_market_analytics(item_id)
-            return MarketAnalytics(**analytics)
-        except:
-            return None
+        item_id: str,
+        days: int = 7,
+        vendor: Optional[str] = None
+    ) -> List[PriceHistoryType]:
+        """Get price history for an item."""
+        return await market_service.get_price_history(
+            item_id=item_id,
+            days=days,
+            vendor=vendor
+        )
 
-@strawberry.type
-class ItemInput:
-    name: str
-    base_price: float
-    current_price: Optional[float] = None
-    blacklisted: bool = False
-    locked: bool = False
+    @strawberry.field
+    async def trade_opportunities(
+        self,
+        info: Info,
+        min_profit: float = 10000,
+        min_profit_percent: float = 10
+    ) -> List[TradeOpportunityType]:
+        """Find profitable trading opportunities."""
+        return await market_service.find_arbitrage_opportunities(
+            min_profit=min_profit,
+            min_profit_percent=min_profit_percent
+        )
+
+    @strawberry.field
+    async def craft_analysis(
+        self,
+        info: Info,
+        min_profit: Optional[float] = None
+    ) -> List[CraftAnalysisType]:
+        """Analyze craft profitability."""
+        return await item_service.analyze_crafts(min_profit=min_profit)
 
 @strawberry.type
 class Mutation:
     @strawberry.mutation
-    async def create_item(
-        self,
-        info: Info,
-        input: ItemInput
-    ) -> ItemType:
-        current_user = await get_current_user(info.context["request"])
-        if not current_user.is_admin:
-            raise PermissionError("Admin access required")
-            
-        service = await get_item_service(info.context["request"])
-        item = await service.create(input.__dict__)
-        return ItemType.from_pydantic(item)
-
-    @strawberry.mutation
-    async def override_price(
+    async def update_price(
         self,
         info: Info,
         item_id: str,
-        price: float
+        price: float,
+        vendor: str
     ) -> ItemType:
-        service = await get_item_service(info.context["request"])
-        item = await service.override_price(item_id, price)
-        return ItemType.from_pydantic(item)
+        """Update item price."""
+        entry = PriceEntry(
+            price_rub=price,
+            vendor={"name": vendor}
+        )
+        await market_service.update_market_prices([entry])
+        return await item_service.get_by_id(item_id)
 
     @strawberry.mutation
     async def blacklist_item(
         self,
         info: Info,
         item_id: str
-    ) -> ItemType:
-        service = await get_item_service(info.context["request"])
-        item = await service.blacklist_item(item_id)
-        return ItemType.from_pydantic(item)
+    ) -> bool:
+        """Add item to blacklist."""
+        await item_service.blacklist_item(item_id)
+        return True
 
     @strawberry.mutation
-    async def lock_item(
+    async def remove_from_blacklist(
         self,
         info: Info,
         item_id: str
-    ) -> ItemType:
-        service = await get_item_service(info.context["request"])
-        item = await service.lock_item(item_id)
-        return ItemType.from_pydantic(item)
+    ) -> bool:
+        """Remove item from blacklist."""
+        await item_service.remove_from_blacklist(item_id)
+        return True
 
 schema = strawberry.Schema(
     query=Query,

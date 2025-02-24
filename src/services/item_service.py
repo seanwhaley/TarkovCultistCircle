@@ -1,240 +1,139 @@
-"""Item service layer handling item-related operations."""
-
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+"""Item service with relationship and market data handling."""
+from typing import List, Optional, Dict, Any
+from datetime import datetime
 import logging
 
-from src.core.cache import cache, invalidate_cache
-from src.core.exceptions import ValidationError, NotFoundError
-from src.models.item import Item, ItemCreate, ItemUpdate
+from src.database.neo4j import db
+from src.models.item import Item, ItemCreate, ItemUpdate, PriceEntry
+from src.models.models import (
+    Item as ItemNode, PriceHistory, Trade, 
+    Armor, Material, WeaponStats
+)
 from src.services.base import BaseService
+from src.database.exceptions import DatabaseError
 
 logger = logging.getLogger(__name__)
 
-class ItemService(BaseService[Item]):
-    """Service for handling item operations."""
-    
-    def __init__(self, db_session):
-        super().__init__(db_session)
-        self.model_class = Item
+class ItemService(BaseService):
+    """Service for managing items and their relationships."""
 
-    @cache(expire=300)  # Cache for 5 minutes
-    async def get_items(
-        self,
-        skip: int = 0,
-        limit: int = 100,
-        include_blacklisted: bool = False
-    ) -> List[Item]:
-        """Get items with optional filtering."""
-        query = """
-        MATCH (i:Item)
-        WHERE i.blacklisted = false OR $include_blacklisted = true
-        RETURN i
-        ORDER BY i.name
-        SKIP $skip
-        LIMIT $limit
-        """
-        result = await self._execute_query(
-            query,
-            {"skip": skip, "limit": limit, "include_blacklisted": include_blacklisted}
-        )
-        return [Item(**item["i"]) for item in result]
+    def __init__(self):
+        self.db = db
+        self.model_class = ItemNode
 
-    async def override_price(self, item_id: str, price: float) -> Item:
-        """Override an item's price."""
-        if price <= 0:
-            raise ValidationError("Price must be greater than 0")
+    async def create_item(self, item: ItemCreate) -> Item:
+        """Create a new item with all its relationships."""
+        try:
+            # Create base item node
+            item_data = item.model_dump()
+            item_node = ItemNode(**item_data).save()
 
-        query = """
-        MATCH (i:Item {uid: $item_id})
-        WHERE NOT i.locked
-        SET i.current_price = $price,
-            i.updated_at = $timestamp,
-            i.price_history = i.price_history + [{
-                price: $price,
-                timestamp: $timestamp,
-                type: 'override'
-            }]
-        RETURN i
-        """
-        result = await self._execute_query(
-            query,
-            {
-                "item_id": item_id,
-                "price": price,
-                "timestamp": datetime.utcnow().isoformat()
-            },
-            single_result=True
-        )
-        if not result:
-            raise NotFoundError("Item not found or is locked")
-        
-        # Invalidate cache for this item
-        await invalidate_cache(f"items:{item_id}")
-        return Item(**result["i"])
+            # Handle armor properties if present
+            if item.properties and item.properties.armor:
+                armor_data = item.properties.armor.model_dump()
+                material_data = armor_data.pop('material')
+                
+                # Create or get material
+                material = Material.nodes.get_or_none(name=material_data['name'])
+                if not material:
+                    material = Material(**material_data).save()
+                
+                # Create armor with material relationship
+                armor = Armor(**armor_data).save()
+                armor.material.connect(material)
+                item_node.armor.connect(armor)
 
-    async def blacklist_item(self, item_id: str) -> Item:
-        """Blacklist an item."""
-        query = """
-        MATCH (i:Item {uid: $item_id})
-        SET i.blacklisted = true,
-            i.updated_at = $timestamp
-        RETURN i
-        """
-        result = await self._execute_query(
-            query,
-            {
-                "item_id": item_id,
-                "timestamp": datetime.utcnow().isoformat()
-            },
-            single_result=True
-        )
-        if not result:
-            raise NotFoundError("Item not found")
-        
-        # Invalidate cache for items list
-        await invalidate_cache("items:*")
-        return Item(**result["i"])
+            # Handle weapon stats if present
+            if item.properties and item.properties.weapon_stats:
+                stats_data = item.properties.weapon_stats.model_dump()
+                stats = WeaponStats(**stats_data).save()
+                item_node.weapon_stats.connect(stats)
 
-    async def lock_item(self, item_id: str) -> Item:
-        """Lock an item's price."""
-        query = """
-        MATCH (i:Item {uid: $item_id})
-        SET i.locked = true,
-            i.updated_at = $timestamp
-        RETURN i
-        """
-        result = await self._execute_query(
-            query,
-            {
-                "item_id": item_id,
-                "timestamp": datetime.utcnow().isoformat()
-            },
-            single_result=True
-        )
-        if not result:
-            raise NotFoundError("Item not found")
-        
-        # Invalidate cache for this item
-        await invalidate_cache(f"items:{item_id}")
-        return Item(**result["i"])
+            return Item.model_validate(item_node.__properties__)
+        except Exception as e:
+            logger.error(f"Failed to create item: {str(e)}")
+            raise DatabaseError(f"Item creation failed: {str(e)}")
 
-    @cache(expire=300)
-    async def get_market_analytics(self, item_id: str) -> Dict[str, Any]:
-        """Get market analytics for an item."""
-        query = """
-        MATCH (i:Item {uid: $item_id})
-        WITH i, i.price_history as history
-        WHERE size(history) > 0
-        WITH i,
-             history[size(history)-1].price as current_price,
-             history[size(history)-2].price as previous_price,
-             [price in history | price.price] as prices
-        RETURN {
-            volatility: reduce(v = 0.0, p in prices |
-                v + pow(p - avg(prices), 2)) / size(prices),
-            trend: CASE
-                WHEN current_price > previous_price THEN 'up'
-                WHEN current_price < previous_price THEN 'down'
-                ELSE 'stable'
-            END,
-            confidence: CASE
-                WHEN size(prices) < 10 THEN 0.5
-                ELSE 0.8
-            END,
-            volume: size(history),
-            price_change_24h: ((current_price - previous_price) / previous_price) * 100
-        } as analytics
-        """
-        result = await self._execute_query(query, {"item_id": item_id}, single_result=True)
-        if not result:
-            raise NotFoundError("Item not found or has no price history")
-        return result["analytics"]
-
-    async def optimize_purchases(
-        self,
-        item_ids: List[str],
-        budget: float,
-        max_items: Optional[int] = None,
-        min_profit: Optional[float] = None
-    ) -> Dict[str, Any]:
-        """Calculate optimal item purchases within budget."""
-        query = """
-        MATCH (i:Item)
-        WHERE i.uid IN $item_ids
-            AND NOT i.blacklisted
-            AND i.current_price > 0
-        WITH i
-        ORDER BY (i.base_price - i.current_price) / i.current_price DESC
-        WITH collect({
-            item: i,
-            profit_margin: (i.base_price - i.current_price) / i.current_price
-        }) as items
-        WITH [item in items WHERE 
-            item.profit_margin >= $min_profit_margin] as filtered_items
-        RETURN {
-            items: [item in filtered_items[..$max_items] |
-                {
-                    uid: item.item.uid,
-                    name: item.item.name,
-                    current_price: item.item.current_price,
-                    potential_profit: item.item.base_price - item.item.current_price,
-                    profit_margin: item.profit_margin
-                }
-            ],
-            total_cost: reduce(cost = 0.0, item in filtered_items[..$max_items] |
-                cost + item.item.current_price),
-            expected_profit: reduce(profit = 0.0, item in filtered_items[..$max_items] |
-                profit + (item.item.base_price - item.item.current_price)),
-            profit_margin: reduce(margin = 0.0, item in filtered_items[..$max_items] |
-                margin + item.profit_margin) / size(filtered_items[..$max_items])
-        } as result
-        """
-        result = await self._execute_query(
-            query,
-            {
-                "item_ids": item_ids,
-                "max_items": max_items or len(item_ids),
-                "min_profit_margin": min_profit / 100 if min_profit else 0
-            },
-            single_result=True
-        )
-        if not result or not result["result"]["items"]:
-            raise ValidationError("No valid items found for optimization")
-        
-        # Validate budget constraints
-        if result["result"]["total_cost"] > budget:
-            raise ValidationError("Total cost exceeds budget")
+    async def update_market_data(self, item_id: str, price_entry: PriceEntry) -> None:
+        """Update item's price history and market data."""
+        try:
+            item = ItemNode.nodes.get(uid=item_id)
             
-        return result["result"]
+            # Create price history entry
+            history = PriceHistory(
+                price_rub=price_entry.price_rub,
+                vendor_name=price_entry.vendor.name,
+                currency=price_entry.currency,
+                requires_quest=price_entry.requires_quest,
+                restock_amount=price_entry.restock_amount
+            ).save()
+            
+            # Connect price history to item
+            item.price_history.connect(history)
+            
+            # Update market data
+            market_data = item.market_data or {}
+            market_data['last_update'] = datetime.utcnow().isoformat()
+            market_data['last_price'] = price_entry.price_rub
+            
+            # Calculate price changes
+            prev_prices = [ph.price_rub for ph in item.price_history.all()]
+            if prev_prices:
+                market_data['change_24h'] = (
+                    (price_entry.price_rub - prev_prices[-1]) / prev_prices[-1]
+                ) * 100 if prev_prices[-1] else 0
+            
+            item.market_data = market_data
+            item.save()
 
-    @cache(expire=60)
-    async def get_investment_suggestions(
-        self,
-        budget: float,
-        limit: int = 10
-    ) -> List[Dict[str, Any]]:
-        """Get investment suggestions based on budget."""
+        except Exception as e:
+            logger.error(f"Failed to update market data: {str(e)}")
+            raise DatabaseError(f"Market data update failed: {str(e)}")
+
+    async def get_craft_requirements(self, item_id: str) -> List[Dict[str, Any]]:
+        """Get crafting requirements for an item."""
         query = """
-        MATCH (i:Item)
-        WHERE NOT i.blacklisted
-            AND i.current_price <= $budget
-            AND i.current_price > 0
-        WITH i,
-            (i.base_price - i.current_price) / i.current_price as profit_margin
-        ORDER BY profit_margin DESC
-        LIMIT $limit
-        RETURN collect({
-            uid: i.uid,
-            name: i.name,
-            current_price: i.current_price,
-            potential_profit: i.base_price - i.current_price,
-            profit_margin: profit_margin
-        }) as suggestions
+        MATCH (i:Item {uid: $item_id})<-[:PRODUCES]-(c:Trade {type: 'craft'})
+        MATCH (c)-[r:REQUIRES]->(req:Item)
+        RETURN req.name as item_name, 
+               req.base_price as base_price,
+               r.count as quantity,
+               c.station as station,
+               c.level as level
         """
-        result = await self._execute_query(
-            query,
-            {"budget": budget, "limit": limit},
-            single_result=True
-        )
-        return result["suggestions"] if result else []
+        return await self._execute_query(query, {"item_id": item_id})
+
+    async def get_barter_trades(self, item_id: str) -> List[Dict[str, Any]]:
+        """Get barter trades involving an item."""
+        query = """
+        MATCH (i:Item {uid: $item_id})<-[:GIVES]-(b:Trade {type: 'barter'})
+        MATCH (b)-[r:REQUIRES]->(req:Item)
+        MATCH (b)-[:AVAILABLE_AT]->(v:Vendor)
+        RETURN v.name as vendor_name,
+               collect({
+                   name: req.name,
+                   quantity: r.count,
+                   base_price: req.base_price
+               }) as requirements
+        """
+        return await self._execute_query(query, {"item_id": item_id})
+
+    async def calculate_profit_margin(self, item_id: str) -> Dict[str, float]:
+        """Calculate potential profit margins for an item."""
+        query = """
+        MATCH (i:Item {uid: $item_id})
+        MATCH (i)-[:CAN_BUY_FROM]->(bt:Trade)-[:FROM_VENDOR]->(bv:Vendor)
+        MATCH (i)-[:CAN_SELL_TO]->(st:Trade)-[:TO_VENDOR]->(sv:Vendor)
+        WITH i, bt, st, bv, sv,
+             bt.priceRUB as buy_price,
+             st.priceRUB as sell_price
+        WHERE buy_price < sell_price
+        RETURN bv.name as buy_vendor,
+               sv.name as sell_vendor,
+               buy_price,
+               sell_price,
+               sell_price - buy_price as profit,
+               ((sell_price - buy_price) / buy_price * 100) as profit_percent
+        ORDER BY profit DESC
+        """
+        return await self._execute_query(query, {"item_id": item_id})

@@ -1,151 +1,204 @@
-# Standard library imports
+"""Blueprint for item optimization features."""
 import logging
+from typing import Dict, Any, List
 
-# Third-party imports
 from flask import Blueprint, current_app, jsonify, render_template, request
+from flask_login import login_required
 
-# Local imports
 from src.core.neo4j import Neo4jClient
+from src.services.item_service import ItemService
+from src.services.market_service import MarketService
 from src.services.exceptions import OptimizationError
-from src.services.data_service import DataService
+from src.models.item import Item
 from src.blueprints.auth import admin_required
 
 optimizer_bp = Blueprint('optimizer', __name__)
-data_service = DataService()
+item_service = ItemService()
+market_service = MarketService()
+logger = logging.getLogger(__name__)
 
 @optimizer_bp.route('/')
 def index():
     """Main optimization interface"""
-    config = {
-        'max_items': current_app.config.get('OPTIMIZER_MAX_ITEMS', 5),
-        'min_price': current_app.config.get('OPTIMIZER_MIN_PRICE', 400000),
-    }
-    return render_template('optimizer/index.html', config=config)
+    return render_template('optimizer/index.html')
 
 @optimizer_bp.route('/optimize', methods=['POST'])
-def optimize():
+async def optimize():
     """Find optimal item combinations"""
     try:
         data = request.get_json()
-        min_price = float(data.get('minPrice', 400000))
-        max_items = min(int(data.get('maxItems', 5)), 5)
-        
-        combinations = data_service.optimize_combinations(
-            min_price=min_price,
-            max_items=max_items
+        budget = data.get('budget', 0)
+        trader_levels = data.get('trader_levels', {})
+        include_barter = data.get('include_barter', True)
+        include_craft = data.get('include_craft', True)
+
+        # Get arbitrage opportunities
+        opportunities = await market_service.find_arbitrage_opportunities(
+            min_profit=10000,  # Configurable minimum profit
+            min_profit_percent=10  # Configurable minimum profit percentage
         )
-            
+
+        # Filter by trader levels and budget
+        filtered_opportunities = [
+            opp for opp in opportunities
+            if opp['buy_price'] <= budget and
+            all(level >= trader_levels.get(vendor, 0) 
+                for vendor, level in trader_levels.items())
+        ]
+
+        # Include barter trades if requested
+        if include_barter:
+            for opp in filtered_opportunities:
+                barter_trades = await item_service.get_barter_trades(opp['item_id'])
+                if barter_trades:
+                    opp['barter_options'] = barter_trades
+
+        # Include crafting if requested
+        if include_craft:
+            for opp in filtered_opportunities:
+                craft_reqs = await item_service.get_craft_requirements(opp['item_id'])
+                if craft_reqs:
+                    opp['craft_options'] = craft_reqs
+
+        # Calculate market trends
+        for opp in filtered_opportunities:
+            market_data = await market_service.analyze_market_trends(opp['item_id'])
+            opp['market_trends'] = market_data.model_dump()
+
         return jsonify({
             'success': True,
-            'combinations': combinations
+            'opportunities': filtered_opportunities
         })
+
     except Exception as e:
+        logger.error(f"Optimization error: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)
-        }), 400
+        }), 500
 
 @optimizer_bp.route('/price-override', methods=['POST'])
-def set_price_override():
-    """Override item price"""
+@admin_required
+async def set_price_override():
+    """Override item price (admin only)"""
     try:
         data = request.get_json()
-        item_id = data['itemId']
-        price = float(data['price'])
-        duration = data.get('duration')
+        item_id = data['item_id']
+        new_price = data['price']
         
-        data_service.set_price_override(item_id, price, duration)
+        # Create price override
+        await item_service.create_price_override(item_id, new_price)
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Price override error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@optimizer_bp.route('/market-analysis', methods=['GET'])
+async def market_analysis():
+    """Get market analysis data"""
+    try:
+        # Get overall market statistics
+        stats = await market_service.get_market_statistics()
+        
+        # Get significant price changes
+        changes = await market_service.track_price_changes(threshold_percent=5)
+        
+        return jsonify({
+            'success': True,
+            'statistics': stats,
+            'significant_changes': changes
+        })
+    except Exception as e:
+        logger.error(f"Market analysis error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@optimizer_bp.route('/item/<item_id>/history', methods=['GET'])
+async def price_history(item_id: str):
+    """Get item price history"""
+    try:
+        days = request.args.get('days', 7, type=int)
+        vendor = request.args.get('vendor')
+        
+        history = await market_service.get_price_history(
+            item_id,
+            days=days,
+            vendor=vendor
+        )
+        
+        return jsonify({
+            'success': True,
+            'history': history
+        })
+    except Exception as e:
+        logger.error(f"Price history error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@optimizer_bp.route('/blacklist', methods=['POST'])
+@admin_required
+async def manage_blacklist():
+    """Manage item blacklist"""
+    try:
+        data = request.get_json()
+        item_id = data['item_id']
+        action = data['action']  # 'add' or 'remove'
+        
+        if action == 'add':
+            await item_service.blacklist_item(item_id)
+        else:
+            await item_service.remove_from_blacklist(item_id)
             
         return jsonify({'success': True})
     except Exception as e:
+        logger.error(f"Blacklist management error: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)
-        }), 400
+        }), 500
 
-@optimizer_bp.route('/history', methods=['GET', 'POST'])
-def history():
-    """Get or save combination history"""
+@optimizer_bp.route('/craft-analysis', methods=['GET'])
+async def analyze_crafts():
+    """Analyze craft profitability"""
     try:
-        if request.method == 'POST':
-            data = request.get_json()
-            combination_id = data_service.save_combination(
-                items=data['items'],
-                total_price=data['totalPrice']
-            )
-            return jsonify({
-                'success': True,
-                'id': combination_id
-            })
-        else:
-            page = int(request.args.get('page', 1))
-            per_page = int(request.args.get('per_page', 20))
-            history_data = data_service.get_history(page, per_page)
-            return jsonify({
-                'success': True,
-                'history': history_data
-            })
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 400
-
-@optimizer_bp.route('/history/<combination_id>', methods=['DELETE'])
-@admin_required
-def delete_history_entry(combination_id):
-    """Delete a historical combination (admin only)"""
-    try:
-        data_service.delete_combination(combination_id)
-        return jsonify({'success': True})
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 400
-
-@optimizer_bp.route('/blacklist', methods=['POST'])
-def set_blacklist():
-    """Blacklist an item"""
-    try:
-        data = request.get_json()
-        item_id = data['itemId']
-        blacklisted = bool(data['blacklisted'])
-        duration = data.get('duration')
+        # Get all items with crafts
+        query = """
+        MATCH (i:Item)<-[:PRODUCES]-(c:Trade {type: 'craft'})
+        MATCH (c)-[r:REQUIRES]->(req:Item)
+        WITH i, c, collect({item: req, count: toInteger(r.count)}) as requirements
+        MATCH (i)-[:CAN_SELL_TO]->(st:Trade)
+        WHERE st.priceRUB = max(st.priceRUB)
+        WITH i, c, requirements, st.priceRUB as sell_price
+        RETURN i.name as item_name,
+               i.uid as item_id,
+               c.station as station,
+               requirements,
+               sell_price,
+               sell_price - reduce(
+                   cost = 0,
+                   r IN requirements |
+                   cost + r.item.last_low_price * r.count
+               ) as profit
+        ORDER BY profit DESC
+        """
         
-        data_service.set_blacklist(item_id, blacklisted, duration)
-        return jsonify({'success': True})
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 400
-
-@optimizer_bp.route('/lock', methods=['POST'])
-def set_lock():
-    """Lock an item"""
-    try:
-        data = request.get_json()
-        item_id = data['itemId']
-        locked = bool(data['locked'])
-        duration = data.get('duration')
+        crafts = await item_service._execute_query(query)
         
-        data_service.set_lock(item_id, locked, duration)
-        return jsonify({'success': True})
+        return jsonify({
+            'success': True,
+            'craft_analysis': crafts
+        })
     except Exception as e:
+        logger.error(f"Craft analysis error: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)
-        }), 400
-
-@optimizer_bp.route('/refresh', methods=['POST'])
-def refresh_data():
-    """Refresh item data from Tarkov.dev API"""
-    try:
-        result = data_service.fetch_and_store_items()
-        return jsonify(result)
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 400
+        }), 500

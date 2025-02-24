@@ -1,10 +1,10 @@
+"""Internationalization support for Flask applications."""
 from typing import Any, Dict, Optional
 import json
 from pathlib import Path
 import structlog
-from fastapi import Request
-from babel import Locale
-from babel.support import Translations
+from flask import request, g
+import gettext
 
 logger = structlog.get_logger(__name__)
 
@@ -48,24 +48,11 @@ class I18nManager:
         return self._translations[locale]
 
     @staticmethod
-    def get_locale_from_request(request: Request) -> str:
+    def get_locale_from_request() -> str:
         """Extract locale from request."""
-        # Try to get locale from query params
-        locale = request.query_params.get("lang")
-        if locale:
-            return locale
-            
-        # Try to get locale from Accept-Language header
-        accept_language = request.headers.get("Accept-Language", "")
-        if accept_language:
-            # Parse the Accept-Language header
-            try:
-                locale = accept_language.split(",")[0].split("-")[0]
-                return locale
-            except Exception:
-                pass
-                
-        return "en"
+        return gettext.translation('messages', 
+                             localedir='locales',
+                             languages=[request.accept_languages.best_match(['en', 'ru', 'de']) or 'en']).info()['language']
 
     def translate(
         self,
@@ -89,37 +76,16 @@ class I18nManager:
         translator = self.get_translator(locale)
         return translator.ngettext(singular, plural, n) % variables
 
-class LocalizationMiddleware:
-    """Middleware for handling localization in requests."""
-    
-    def __init__(
-        self,
-        i18n: I18nManager,
-        default_locale: str = "en"
-    ):
-        self.i18n = i18n
-        self.default_locale = default_locale
-
-    async def __call__(self, request: Request, call_next):
-        # Get locale from request
-        locale = I18nManager.get_locale_from_request(request)
-        
-        # Validate locale
-        if locale not in self.i18n.supported_locales:
-            locale = self.default_locale
-            
-        # Add locale and translator to request state
-        request.state.locale = locale
-        request.state.translator = self.i18n.get_translator(locale)
-        
-        response = await call_next(request)
-        return response
-
 def setup_i18n(app, translations_dir: Path, supported_locales: Optional[list[str]] = None):
-    """Setup internationalization for the application."""
+    """Setup internationalization for the Flask app."""
     i18n = I18nManager(
         translations_dir=translations_dir,
         supported_locales=supported_locales
     )
-    app.add_middleware(LocalizationMiddleware, i18n=i18n)
+    
+    @app.before_request
+    def before_request():
+        g.locale = I18nManager.get_locale_from_request()
+        g.translator = i18n.get_translator(g.locale)
+        
     return i18n

@@ -1,206 +1,93 @@
-from datetime import datetime, timedelta
+"""Task scheduling using APScheduler with in-memory storage."""
+from datetime import datetime
 import logging
 from typing import Any, Callable, Dict, List, Optional
-import asyncio
 import uuid
+import asyncio
 
-import structlog
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 
 from src.core.config import Settings
-from src.core.tasks import TaskManager
+from src.core.cache import cache
 from src.core.exceptions import AppException
 from src.core.database import DatabaseManager
 
-logger = structlog.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 class SchedulerManager:
-    """Manager for scheduled tasks using APScheduler."""
+    """Manager for scheduled tasks."""
     
-    def __init__(
-        self,
-        settings: Settings,
-        task_manager: TaskManager
-    ):
+    def __init__(self, settings: Settings):
         self.settings = settings
-        self.task_manager = task_manager
-        self.scheduler = AsyncIOScheduler()
+        self.scheduler = BackgroundScheduler()
         self._setup_jobs()
 
     def _setup_jobs(self) -> None:
         """Setup scheduled jobs."""
-        # Run database maintenance at 3 AM daily
+        # Database maintenance - daily at 3 AM
         self.scheduler.add_job(
             self._database_maintenance,
             CronTrigger(hour=3),
-            name='database_maintenance'
+            id='database_maintenance',
+            replace_existing=True
         )
-
-    async def _database_maintenance(self) -> None:
-        """Run database maintenance tasks."""
-        try:
-            async with DatabaseManager.session() as session:
-                # Run Neo4j maintenance queries
-                await session.run("CALL db.stats()")
-                await session.run("CALL db.indexes()")
-                await session.run("CALL db.constraints()")
-                # Execute query plan analysis
-                await session.run("CALL db.queryPlan('MATCH (n) RETURN n LIMIT 1')")
-                # Clear query plan cache for potentially stale plans
-                await session.run("CALL db.clearQueryCaches()")
-            logger.info("Database maintenance completed")
-        except Exception as e:
-            logger.error(f"Database maintenance failed: {str(e)}")
-
-    async def start(self) -> None:
-        """Start the scheduler."""
-        try:
-            # Register default jobs
-            await self._register_default_jobs()
-            
-            # Start scheduler
-            self.scheduler.start()
-            logger.info("Task scheduler started successfully")
-            
-        except Exception as e:
-            logger.error(f"Failed to start scheduler: {str(e)}")
-            raise AppException(f"Scheduler initialization failed: {str(e)}")
-
-    async def stop(self) -> None:
-        """Stop the scheduler."""
-        try:
-            self.scheduler.shutdown()
-            logger.info("Task scheduler stopped")
-        except Exception as e:
-            logger.error(f"Error stopping scheduler: {str(e)}")
-
-    async def _register_default_jobs(self) -> None:
-        """Register default scheduled jobs."""
-        # Market data update job
+        
+        # Market data update - every 5 minutes
         self.scheduler.add_job(
             self._update_market_data,
-            CronTrigger(minute='*/5'),  # Every 5 minutes
+            IntervalTrigger(minutes=5),
             id='market_data_update',
             replace_existing=True
         )
         
-        # Cache cleanup job
+        # Cache cleanup - every hour
         self.scheduler.add_job(
             self._cleanup_cache,
-            CronTrigger(hour=3),  # Daily at 3 AM
+            IntervalTrigger(hours=1),
             id='cache_cleanup',
             replace_existing=True
         )
-        
-        # Price alert check job
-        self.scheduler.add_job(
-            self._check_price_alerts,
-            IntervalTrigger(minutes=15),  # Every 15 minutes
-            id='price_alert_check',
-            replace_existing=True
-        )
-        
-        # Metrics rollup job
-        self.scheduler.add_job(
-            self._rollup_metrics,
-            CronTrigger(minute=0),  # Every hour
-            id='metrics_rollup',
-            replace_existing=True
-        )
 
-    async def _update_market_data(self) -> None:
+    def _database_maintenance(self) -> None:
+        """Run database maintenance tasks."""
+        try:
+            with DatabaseManager.get_session() as session:
+                # Run Neo4j maintenance queries
+                session.run("CALL db.stats()")
+                session.run("CALL db.indexes()")
+                session.run("CALL db.constraints()")
+                session.run("CALL db.clearQueryCaches()")
+            logger.info("Database maintenance completed")
+        except Exception as e:
+            logger.error(f"Database maintenance failed: {str(e)}")
+
+    def _update_market_data(self) -> None:
         """Update market data from external sources."""
         try:
-            task_id = await self.task_manager.create_task(
-                name="market_data_update",
-                coro=self._fetch_and_process_market_data
-            )
-            logger.info(f"Started market data update task: {task_id}")
+            from src.services.market_service import MarketService
+            service = MarketService()
+            service.update_market_data()
+            logger.info("Market data updated successfully")
         except Exception as e:
             logger.error(f"Market data update failed: {str(e)}")
 
-    async def _cleanup_cache(self) -> None:
+    def _cleanup_cache(self) -> None:
         """Clean up expired cache entries."""
         try:
-            # Find expired cache keys
-            pattern = "cache:*"
-            keys = await self.redis.keys(pattern)
-            
-            # Group deletion in batches
-            batch_size = 1000
-            for i in range(0, len(keys), batch_size):
-                batch = keys[i:i + batch_size]
-                # Check TTL for each key
-                for key in batch:
-                    ttl = await self.redis.ttl(key)
-                    if ttl < 0:
-                        await self.redis.delete(key)
-                        
+            cache._cleanup()
             logger.info("Cache cleanup completed")
-            
         except Exception as e:
             logger.error(f"Cache cleanup failed: {str(e)}")
 
-    async def _check_price_alerts(self) -> None:
-        """Check and trigger price alerts."""
-        try:
-            # Get all active price alerts
-            alerts_key = "price_alerts"
-            alerts = await self.redis.hgetall(alerts_key)
-            
-            for user_id, alerts_data in alerts.items():
-                await self._process_user_alerts(
-                    user_id.decode(),
-                    alerts_data.decode()
-                )
-                
-            logger.info("Price alert check completed")
-            
-        except Exception as e:
-            logger.error(f"Price alert check failed: {str(e)}")
-
-    async def _rollup_metrics(self) -> None:
-        """Roll up metrics data for long-term storage."""
-        try:
-            current_hour = datetime.now().replace(
-                minute=0, second=0, microsecond=0
-            )
-            
-            # Get metrics from the last hour
-            start_time = int((current_hour - timedelta(hours=1)).timestamp())
-            end_time = int(current_hour.timestamp())
-            
-            # Aggregate metrics
-            metrics_key = f"metrics:hourly:{end_time}"
-            await self._aggregate_metrics(
-                start_time,
-                end_time,
-                metrics_key
-            )
-            
-            logger.info("Metrics rollup completed")
-            
-        except Exception as e:
-            logger.error(f"Metrics rollup failed: {str(e)}")
-
-    async def add_job(
+    def add_job(
         self,
         func: Callable,
         trigger: str,
         **trigger_args: Any
     ) -> str:
-        """
-        Add a new scheduled job.
-        
-        Args:
-            func: Function to execute
-            trigger: Trigger type ('date', 'interval', or 'cron')
-            trigger_args: Arguments for the trigger
-            
-        Returns:
-            Job ID
-        """
+        """Add a new scheduled job."""
         job_id = str(uuid.uuid4())
         
         try:
@@ -228,45 +115,35 @@ class SchedulerManager:
             logger.error(f"Failed to add job: {str(e)}")
             raise AppException(f"Failed to schedule job: {str(e)}")
 
-    async def remove_job(self, job_id: str) -> bool:
+    def remove_job(self, job_id: str) -> bool:
         """Remove a scheduled job."""
         try:
             self.scheduler.remove_job(job_id)
-            logger.info(f"Removed scheduled job: {job_id}")
             return True
         except Exception as e:
-            logger.error(f"Failed to remove job: {str(e)}")
+            logger.error(f"Failed to remove job {job_id}: {str(e)}")
             return False
 
-    async def get_jobs(self) -> List[Dict[str, Any]]:
+    def get_jobs(self) -> List[Dict[str, Any]]:
         """Get list of all scheduled jobs."""
         jobs = []
         for job in self.scheduler.get_jobs():
             jobs.append({
-                "id": job.id,
-                "name": job.name,
-                "trigger": str(job.trigger),
-                "next_run": job.next_run_time.isoformat() 
-                    if job.next_run_time else None
+                'id': job.id,
+                'name': job.name,
+                'next_run': job.next_run_time,
+                'trigger': str(job.trigger)
             })
         return jobs
 
-    async def pause_job(self, job_id: str) -> bool:
-        """Pause a scheduled job."""
-        try:
-            self.scheduler.pause_job(job_id)
-            logger.info(f"Paused job: {job_id}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to pause job: {str(e)}")
-            return False
+    def start(self) -> None:
+        """Start the scheduler."""
+        if not self.scheduler.running:
+            self.scheduler.start()
+            logger.info("Scheduler started")
 
-    async def resume_job(self, job_id: str) -> bool:
-        """Resume a paused job."""
-        try:
-            self.scheduler.resume_job(job_id)
-            logger.info(f"Resumed job: {job_id}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to resume job: {str(e)}")
-            return False
+    def stop(self) -> None:
+        """Stop the scheduler."""
+        if self.scheduler.running:
+            self.scheduler.shutdown()
+            logger.info("Scheduler stopped")

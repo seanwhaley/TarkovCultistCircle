@@ -1,6 +1,11 @@
 from flask import Flask, render_template
 from neo4j import GraphDatabase
 import os
+from src.blueprints.auth import auth_bp
+from src.blueprints.api import api_bp
+from src.blueprints.items import bp as items_bp
+from src.blueprints.optimizer import optimizer_bp
+from src.core.limiter import InMemoryRateLimiter
 
 app = Flask(__name__)
 
@@ -9,7 +14,10 @@ app.config.update(
     SECRET_KEY=os.environ.get('SECRET_KEY', 'dev'),
     NEO4J_URI=os.environ.get('NEO4J_URI', 'bolt://neo4j:7687'),
     NEO4J_USER=os.environ.get('NEO4J_USER', 'neo4j'),
-    NEO4J_PASSWORD=os.environ.get('NEO4J_PASSWORD', 'password')
+    NEO4J_PASSWORD=os.environ.get('NEO4J_PASSWORD', 'password'),
+    RATE_LIMIT_ENABLED=True,
+    RATE_LIMIT_DEFAULT=1000,
+    RATE_LIMIT_WINDOW=3600
 )
 
 # Database connection
@@ -21,21 +29,16 @@ def get_db():
         )
     return app.neo4j_db
 
+# Register blueprints
+app.register_blueprint(auth_bp)
+app.register_blueprint(api_bp, url_prefix='/api')
+app.register_blueprint(items_bp, url_prefix='/items')
+app.register_blueprint(optimizer_bp, url_prefix='/optimize')
+
 # Basic routes
 @app.route('/')
 def index():
     return render_template('index.html')
-
-@app.route('/optimize')
-def optimize():
-    return render_template('optimizer/index.html')
-
-@app.route('/items')
-def items():
-    with get_db().session() as session:
-        result = session.run("MATCH (i:Item) RETURN i LIMIT 10")
-        items = [record['i'] for record in result]
-    return render_template('items/list.html', items=items)
 
 # Error handlers
 @app.errorhandler(404)
@@ -45,6 +48,12 @@ def not_found(e):
 @app.errorhandler(500)
 def server_error(e):
     return render_template('errors/500.html'), 500
+
+# Cleanup on shutdown
+@app.teardown_appcontext
+def close_db(error):
+    if hasattr(app, 'neo4j_db'):
+        app.neo4j_db.close()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

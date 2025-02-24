@@ -1,34 +1,34 @@
 """Blueprint registration module."""
-from typing import List, Optional, Tuple, TypeVar
+from typing import List
 from flask import Flask, Blueprint
 
-from src.blueprints.main import main_bp
-from src.blueprints.auth import auth_bp
-from src.blueprints.items import bp as items_bp
-from src.blueprints.debug import debug_bp
-from src.blueprints.optimizer import optimizer_bp
-from src.blueprints.api import api_bp
-from src.blueprints.errors import errors_bp
-from src.blueprints.market import bp as market_bp
+from .main import main_bp
+from .auth import auth_bp
+from .items import bp as items_bp
+from .debug import debug_bp
+from .optimizer import optimizer_bp
+from .api import api_bp
+from .errors import errors_bp
+from .market import bp as market_bp
 
-__all__ = ['register_blueprints', 'items_bp', 'auth_bp']
-
-BlueprintType = TypeVar('BlueprintType', bound=Blueprint)
+__all__ = ['register_blueprints']
 
 def register_blueprints(app: Flask) -> None:
     """Register all blueprints with the application."""
-    blueprints: List[Tuple[Blueprint, Optional[str]]] = [
+    blueprints = [
         (errors_bp, None),  # Error handlers must be registered first
         (main_bp, '/'),
         (auth_bp, '/auth'),
         (items_bp, '/items'),
-        (optimizer_bp, '/optimizer'),
+        (optimizer_bp, '/optimize'),
         (market_bp, '/market'),
-        (api_bp, f"{app.config.get('API_PREFIX', '/api')}/{app.config.get('API_VERSION', 'v1')}")
+        (api_bp, f"{app.config['API_PREFIX']}/{app.config['API_VERSION']}")
     ]
-    
-    if app.config.get('DEBUG', False) and app.config.get('ENABLE_DEBUG_ROUTES', False):
+
+    # Register debug routes only in development
+    if app.debug and app.config.get('ENABLE_DEBUG_ROUTES', False):
         blueprints.append((debug_bp, '/debug'))
 
     for blueprint, url_prefix in blueprints:
         app.register_blueprint(blueprint, url_prefix=url_prefix)
+        app.logger.info(f"Registered blueprint: {blueprint.name} with prefix: {url_prefix}")
